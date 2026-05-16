@@ -2,7 +2,7 @@
 // Free public token (works for dev/demo — replace with your own for production)
 // Get free token at: https://account.mapbox.com/
 
-const MAPBOX_TOKEN = 'YOUR_MAPBOX_TOKEN_HERE';
+const MAPBOX_TOKEN = 'pk.eyJ1IjoiYXNodXh5eiIsImEiOiJjbW96YzZwMGYwa3RxMnRzam9lYzhoMG1oIn0.g80o_sOReUwnhxuqsO9waw';
 
 const ICON_CFG = {
   hospital: { letter: "H", bg: "#E53935", shadow: "rgba(229,57,53,0.5)" },
