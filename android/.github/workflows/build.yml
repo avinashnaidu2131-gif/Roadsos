@@ -6,7 +6,6 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
-# Force all JS actions to use Node 24 (Node 20 deprecated June 2026)
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -20,25 +19,38 @@ jobs:
         uses: actions/checkout@v4
 
       # ── Java 17 ─────────────────────────────────────────────────────────
-      # NOTE: do NOT set cache:'gradle' here — we handle caching ourselves
-      # below to avoid conflicts with gradle/actions/setup-gradle warnings.
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      # ── Android SDK ─────────────────────────────────────────────────────
-      # android-actions/setup-android@v3 is Node 24 compatible when
-      # FORCE_JAVASCRIPT_ACTIONS_TO_NODE24 is set (done in env above).
+      # ── Android SDK (manual — more reliable than setup-android@v3) ──────
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        run: |
+          # Install command-line tools
+          CMDLINE_TOOLS_URL="https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          curl -o /tmp/cmdtools.zip "$CMDLINE_TOOLS_URL"
+          unzip -q /tmp/cmdtools.zip -d /tmp/cmdtools
+          mv /tmp/cmdtools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
+
+          export ANDROID_HOME=$HOME/android-sdk
+          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
+
+          # Accept licenses
+          yes | sdkmanager --licenses > /dev/null 2>&1
+
+          # Install required SDK components
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+          # Persist env vars for subsequent steps
+          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
 
       # ── Gradle cache ─────────────────────────────────────────────────────
-      # Using actions/cache@v4 directly avoids the setup-gradle deprecation
-      # warning. Cache failures are non-fatal (continue-on-error: true).
-      - name: Cache Gradle home
-        id: gradle-cache
+      - name: Cache Gradle
         continue-on-error: true
         uses: actions/cache@v4
         with:
@@ -54,24 +66,22 @@ jobs:
         working-directory: android
         run: chmod +x gradlew
 
-      # ── Debug APK (every push to main) ───────────────────────────────────
+      # ── Debug APK ────────────────────────────────────────────────────────
       - name: Build debug APK
         working-directory: android
         run: |
           ./gradlew assembleDebug \
             --no-daemon \
-            --stacktrace \
-            --build-cache \
-            -Dorg.gradle.jvmargs="-Xmx2g -XX:+HeapDumpOnOutOfMemoryError"
+            --stacktrace
 
-      - name: Upload debug APK artifact
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: roadsos-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
-      # ── Copy APK so web server can serve it ─────────────────────────────
+      # ── Copy APK to static/downloads ─────────────────────────────────────
       - name: Copy APK to static/downloads
         run: |
           mkdir -p static/downloads
@@ -86,7 +96,7 @@ jobs:
           git diff --staged --quiet || \
             git commit -m "ci: update debug APK [skip ci]" && git push
 
-      # ── Release APK (only on version tags like v1.0.0) ──────────────────
+      # ── Release APK (version tags only) ──────────────────────────────────
       - name: Decode keystore
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
@@ -97,17 +107,16 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         working-directory: android
         env:
-          KEYSTORE_PATH:      ${{ github.workspace }}/android/roadsos-release.jks
-          KEYSTORE_PASSWORD:  ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS:          ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD:       ${{ secrets.KEY_PASSWORD }}
+          KEYSTORE_PATH:     ${{ github.workspace }}/android/roadsos-release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS:         ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD:      ${{ secrets.KEY_PASSWORD }}
         run: |
           ./gradlew assembleRelease \
             --no-daemon \
-            --stacktrace \
-            -Dorg.gradle.jvmargs="-Xmx2g"
+            --stacktrace
 
-      - name: Upload release APK artifact
+      - name: Upload release APK
         if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
@@ -115,7 +124,7 @@ jobs:
           path: android/app/build/outputs/apk/release/app-release.apk
           retention-days: 90
 
-      # ── GitHub Release ───────────────────────────────────────────────────
+      # ── GitHub Release ────────────────────────────────────────────────────
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
@@ -127,10 +136,7 @@ jobs:
           body: |
             ## RoadSoS ${{ github.ref_name }}
 
-            ### Install on Android (sideload APK)
-            1. Download `app-release.apk` (or `app-debug.apk` for testing)
-            2. On your phone: **Settings → Apps → Special access → Install unknown apps**
-               → allow your browser/Files app
-            3. Open the downloaded APK and tap **Install**
-
-            > **Note:** This is a direct APK build, not a Play Store submission.
+            ### Install on Android (sideload)
+            1. Download `app-release.apk`
+            2. Settings → Apps → Special access → Install unknown apps → allow
+            3. Open the APK and tap Install
