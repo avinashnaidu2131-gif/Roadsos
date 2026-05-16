@@ -25,13 +25,11 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # ── Android SDK (use runner's pre-installed SDK) ────────────────────
+      # ── Android SDK (runner has it pre-installed, just point ANDROID_HOME) ──
       - name: Set up Android SDK
         run: |
-          # Use the SDK already on the runner — avoid conflict with ANDROID_SDK_ROOT
           echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-          yes | sdkmanager --licenses > /dev/null 2>&1
-          sdkmanager "platforms;android-34" "build-tools;34.0.0" 
+          echo "ANDROID_SDK_ROOT=" >> $GITHUB_ENV
 
       # ── Gradle cache ─────────────────────────────────────────────────────
       - name: Cache Gradle
