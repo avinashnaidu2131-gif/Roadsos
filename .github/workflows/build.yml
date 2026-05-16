@@ -70,19 +70,14 @@ jobs:
       - name: Build debug APK
         working-directory: android
         env:
-          JAVA_TOOL_OPTIONS: ""
-          _JAVA_OPTIONS: ""
-          JVM_OPTS: ""
+          # Override runner-injected JVM options that cause "-Xmx64m -Xms64m" class error
+          JAVA_TOOL_OPTIONS: "-Xmx1536m"
+          _JAVA_OPTIONS: "-Xmx1536m"
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx1536m"
         run: |
-          # Force-override any bad jvmargs from gradle.properties or env
-          echo "org.gradle.jvmargs=-Xmx1536m" > gradle.properties
-          echo "android.useAndroidX=true" >> gradle.properties
-          echo "android.enableJetifier=true" >> gradle.properties
-          echo "org.gradle.daemon=false" >> gradle.properties
-          ./gradlew assembleDebug \
-            --no-daemon \
-            --stacktrace \
-            -Porg.gradle.jvmargs=-Xmx1536m
+          printf 'org.gradle.jvmargs=-Xmx1536m\nandroid.useAndroidX=true\nandroid.enableJetifier=true\norg.gradle.daemon=false\n' > gradle.properties
+          cat gradle.properties
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
