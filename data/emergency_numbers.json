@@ -1,0 +1,593 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "description": "RoadSoS Emergency Numbers Database",
+    "last_updated": "2026-05-02",
+    "total_countries": 30,
+    "note": "India has state-level detail; all others have national numbers"
+  },
+
+  "countries": {
+
+    "IN": {
+      "name": "India",
+      "continent": "Asia",
+      "national": {
+        "police": "100",
+        "ambulance": "108",
+        "fire": "101",
+        "emergency": "112",
+        "highway_patrol": "1033",
+        "road_accident_relief": "1073",
+        "women_helpline": "1091",
+        "tourist_helpline": "1363"
+      },
+      "states": {
+        "TG": {
+          "name": "Telangana",
+          "capital": "Hyderabad",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112",
+          "local_police_control": "040-27852425",
+          "traffic_police": "040-23261111",
+          "highway_patrol": "1033",
+          "women_safety": "181",
+          "child_helpline": "1098"
+        },
+        "KA": {
+          "name": "Karnataka",
+          "capital": "Bengaluru",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112",
+          "traffic_police": "080-22868444",
+          "highway_patrol": "1033",
+          "women_safety": "181"
+        },
+        "MH": {
+          "name": "Maharashtra",
+          "capital": "Mumbai",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112",
+          "traffic_police": "022-24150190",
+          "highway_patrol": "1033",
+          "disaster_management": "022-22694725"
+        },
+        "DL": {
+          "name": "Delhi",
+          "capital": "New Delhi",
+          "police": "100",
+          "ambulance": "102",
+          "fire": "101",
+          "emergency": "112",
+          "traffic_police": "1095",
+          "highway_patrol": "1033",
+          "women_safety": "181",
+          "pcr": "100"
+        },
+        "TN": {
+          "name": "Tamil Nadu",
+          "capital": "Chennai",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112",
+          "traffic_police": "103",
+          "highway_patrol": "1033",
+          "women_safety": "181"
+        },
+        "AP": {
+          "name": "Andhra Pradesh",
+          "capital": "Amaravati",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112",
+          "highway_patrol": "1033",
+          "women_safety": "181"
+        },
+        "KL": {
+          "name": "Kerala",
+          "capital": "Thiruvananthapuram",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112",
+          "highway_patrol": "1033",
+          "tourist_police": "0471-2721547"
+        },
+        "WB": {
+          "name": "West Bengal",
+          "capital": "Kolkata",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112",
+          "highway_patrol": "1033"
+        },
+        "RJ": {
+          "name": "Rajasthan",
+          "capital": "Jaipur",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112",
+          "highway_patrol": "1033"
+        },
+        "GJ": {
+          "name": "Gujarat",
+          "capital": "Gandhinagar",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112",
+          "highway_patrol": "1033"
+        },
+        "MP": {
+          "name": "Madhya Pradesh",
+          "capital": "Bhopal",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112",
+          "highway_patrol": "1033"
+        },
+        "UP": {
+          "name": "Uttar Pradesh",
+          "capital": "Lucknow",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112",
+          "highway_patrol": "1033",
+          "women_safety": "1090"
+        },
+        "PB": {
+          "name": "Punjab",
+          "capital": "Chandigarh",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112",
+          "highway_patrol": "1033"
+        },
+        "HR": {
+          "name": "Haryana",
+          "capital": "Chandigarh",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112",
+          "highway_patrol": "1033"
+        },
+        "BR": {
+          "name": "Bihar",
+          "capital": "Patna",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112",
+          "highway_patrol": "1033"
+        },
+        "OD": {
+          "name": "Odisha",
+          "capital": "Bhubaneswar",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112",
+          "highway_patrol": "1033"
+        },
+        "AS": {
+          "name": "Assam",
+          "capital": "Dispur",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112",
+          "highway_patrol": "1033"
+        },
+        "JH": {
+          "name": "Jharkhand",
+          "capital": "Ranchi",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112",
+          "highway_patrol": "1033"
+        },
+        "CG": {
+          "name": "Chhattisgarh",
+          "capital": "Raipur",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112",
+          "highway_patrol": "1033"
+        },
+        "HP": {
+          "name": "Himachal Pradesh",
+          "capital": "Shimla",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112",
+          "highway_patrol": "1033",
+          "mountain_rescue": "1077"
+        },
+        "UK": {
+          "name": "Uttarakhand",
+          "capital": "Dehradun",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112",
+          "highway_patrol": "1033",
+          "disaster_relief": "1070"
+        },
+        "GA": {
+          "name": "Goa",
+          "capital": "Panaji",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112",
+          "tourist_police": "0832-2423288"
+        },
+        "MN": {
+          "name": "Manipur",
+          "capital": "Imphal",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112"
+        },
+        "SK": {
+          "name": "Sikkim",
+          "capital": "Gangtok",
+          "police": "100",
+          "ambulance": "108",
+          "fire": "101",
+          "emergency": "112"
+        }
+      }
+    },
+
+    "US": {
+      "name": "United States",
+      "continent": "North America",
+      "national": {
+        "emergency": "911",
+        "police": "911",
+        "ambulance": "911",
+        "fire": "911",
+        "highway_patrol": "911",
+        "non_emergency": "311"
+      }
+    },
+
+    "GB": {
+      "name": "United Kingdom",
+      "continent": "Europe",
+      "national": {
+        "emergency": "999",
+        "police": "999",
+        "ambulance": "999",
+        "fire": "999",
+        "non_emergency_police": "101",
+        "nhs_helpline": "111"
+      }
+    },
+
+    "AU": {
+      "name": "Australia",
+      "continent": "Oceania",
+      "national": {
+        "emergency": "000",
+        "police": "000",
+        "ambulance": "000",
+        "fire": "000",
+        "police_link": "131 444"
+      }
+    },
+
+    "AE": {
+      "name": "United Arab Emirates",
+      "continent": "Asia",
+      "national": {
+        "emergency": "999",
+        "police": "999",
+        "ambulance": "998",
+        "fire": "997",
+        "traffic_police": "901"
+      }
+    },
+
+    "SA": {
+      "name": "Saudi Arabia",
+      "continent": "Asia",
+      "national": {
+        "emergency": "911",
+        "police": "999",
+        "ambulance": "997",
+        "fire": "998",
+        "traffic": "993"
+      }
+    },
+
+    "SG": {
+      "name": "Singapore",
+      "continent": "Asia",
+      "national": {
+        "emergency": "999",
+        "police": "999",
+        "ambulance": "995",
+        "fire": "995",
+        "non_emergency": "1800-255-0000"
+      }
+    },
+
+    "MY": {
+      "name": "Malaysia",
+      "continent": "Asia",
+      "national": {
+        "emergency": "999",
+        "police": "999",
+        "ambulance": "999",
+        "fire": "994",
+        "highway_patrol": "1800-88-7787"
+      }
+    },
+
+    "PK": {
+      "name": "Pakistan",
+      "continent": "Asia",
+      "national": {
+        "emergency": "1122",
+        "police": "15",
+        "ambulance": "1122",
+        "fire": "16",
+        "motorway_police": "130"
+      }
+    },
+
+    "BD": {
+      "name": "Bangladesh",
+      "continent": "Asia",
+      "national": {
+        "emergency": "999",
+        "police": "999",
+        "ambulance": "199",
+        "fire": "199"
+      }
+    },
+
+    "LK": {
+      "name": "Sri Lanka",
+      "continent": "Asia",
+      "national": {
+        "emergency": "119",
+        "police": "119",
+        "ambulance": "110",
+        "fire": "111"
+      }
+    },
+
+    "NP": {
+      "name": "Nepal",
+      "continent": "Asia",
+      "national": {
+        "emergency": "100",
+        "police": "100",
+        "ambulance": "102",
+        "fire": "101",
+        "tourist_police": "1144"
+      }
+    },
+
+    "DE": {
+      "name": "Germany",
+      "continent": "Europe",
+      "national": {
+        "emergency": "112",
+        "police": "110",
+        "ambulance": "112",
+        "fire": "112"
+      }
+    },
+
+    "FR": {
+      "name": "France",
+      "continent": "Europe",
+      "national": {
+        "emergency": "112",
+        "police": "17",
+        "ambulance": "15",
+        "fire": "18"
+      }
+    },
+
+    "IT": {
+      "name": "Italy",
+      "continent": "Europe",
+      "national": {
+        "emergency": "112",
+        "police": "113",
+        "ambulance": "118",
+        "fire": "115",
+        "road_assistance": "116"
+      }
+    },
+
+    "ES": {
+      "name": "Spain",
+      "continent": "Europe",
+      "national": {
+        "emergency": "112",
+        "police": "091",
+        "ambulance": "061",
+        "fire": "080"
+      }
+    },
+
+    "CA": {
+      "name": "Canada",
+      "continent": "North America",
+      "national": {
+        "emergency": "911",
+        "police": "911",
+        "ambulance": "911",
+        "fire": "911"
+      }
+    },
+
+    "ZA": {
+      "name": "South Africa",
+      "continent": "Africa",
+      "national": {
+        "emergency": "112",
+        "police": "10111",
+        "ambulance": "10177",
+        "fire": "10111"
+      }
+    },
+
+    "NG": {
+      "name": "Nigeria",
+      "continent": "Africa",
+      "national": {
+        "emergency": "112",
+        "police": "199",
+        "ambulance": "112",
+        "fire": "112"
+      }
+    },
+
+    "KE": {
+      "name": "Kenya",
+      "continent": "Africa",
+      "national": {
+        "emergency": "999",
+        "police": "999",
+        "ambulance": "0800 720 999",
+        "fire": "999"
+      }
+    },
+
+    "JP": {
+      "name": "Japan",
+      "continent": "Asia",
+      "national": {
+        "emergency": "110",
+        "police": "110",
+        "ambulance": "119",
+        "fire": "119"
+      }
+    },
+
+    "CN": {
+      "name": "China",
+      "continent": "Asia",
+      "national": {
+        "emergency": "120",
+        "police": "110",
+        "ambulance": "120",
+        "fire": "119",
+        "traffic_police": "122"
+      }
+    },
+
+    "BR": {
+      "name": "Brazil",
+      "continent": "South America",
+      "national": {
+        "emergency": "192",
+        "police": "190",
+        "ambulance": "192",
+        "fire": "193",
+        "highway_police": "191"
+      }
+    },
+
+    "MX": {
+      "name": "Mexico",
+      "continent": "North America",
+      "national": {
+        "emergency": "911",
+        "police": "911",
+        "ambulance": "911",
+        "fire": "911"
+      }
+    },
+
+    "AR": {
+      "name": "Argentina",
+      "continent": "South America",
+      "national": {
+        "emergency": "911",
+        "police": "101",
+        "ambulance": "107",
+        "fire": "100"
+      }
+    },
+
+    "ID": {
+      "name": "Indonesia",
+      "continent": "Asia",
+      "national": {
+        "emergency": "112",
+        "police": "110",
+        "ambulance": "118",
+        "fire": "113"
+      }
+    },
+
+    "PH": {
+      "name": "Philippines",
+      "continent": "Asia",
+      "national": {
+        "emergency": "911",
+        "police": "117",
+        "ambulance": "911",
+        "fire": "911"
+      }
+    },
+
+    "TH": {
+      "name": "Thailand",
+      "continent": "Asia",
+      "national": {
+        "emergency": "191",
+        "police": "191",
+        "ambulance": "1669",
+        "fire": "199",
+        "tourist_police": "1155"
+      }
+    },
+
+    "RU": {
+      "name": "Russia",
+      "continent": "Europe/Asia",
+      "national": {
+        "emergency": "112",
+        "police": "102",
+        "ambulance": "103",
+        "fire": "101"
+      }
+    },
+
+    "EU": {
+      "name": "European Union (pan-EU)",
+      "continent": "Europe",
+      "national": {
+        "emergency": "112",
+        "note": "Works in all 27 EU member states"
+      }
+    }
+  }
+}

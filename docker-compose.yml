@@ -1,0 +1,17 @@
+services:
+  roadsos:
+    build: .
+    container_name: roadsos_app
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - FLASK_ENV=production
+      - OFFLINE_MODE=false
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

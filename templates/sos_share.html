@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoadSoS — Emergency Location</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, sans-serif;
+            background: #f5f5f3;
+        }
+
+        .banner {
+            background: #E24B4A;
+            color: #fff;
+            padding: 16px 20px;
+            text-align: center;
+        }
+
+        .banner h1 {
+            font-size: 22px;
+            font-weight: 800;
+        }
+
+        .banner p {
+            font-size: 13px;
+            margin-top: 4px;
+            opacity: 0.9;
+        }
+
+        #map {
+            width: 100%;
+            height: 52vh;
+        }
+
+        .info-card {
+            background: #fff;
+            max-width: 540px;
+            margin: 16px auto;
+            border-radius: 14px;
+            padding: 20px 24px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .info-card h2 {
+            font-size: 15px;
+            font-weight: 700;
+            color: #E24B4A;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .pulse {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #E24B4A;
+            flex-shrink: 0;
+            animation: pulse 1.2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.3;
+                transform: scale(1.6);
+            }
+        }
+
+        .info-row {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0efec;
+            font-size: 14px;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 600;
+            width: 90px;
+            flex-shrink: 0;
+            color: #666;
+        }
+
+        .btns {
+            max-width: 540px;
+            margin: 0 auto 30px;
+            padding: 0 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .call-btn {
+            display: block;
+            background: #E24B4A;
+            color: #fff;
+            text-decoration: none;
+            text-align: center;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .call-btn:hover {
+            background: #c93b3a;
+        }
+
+        .dir-btn {
+            display: block;
+            background: #378ADD;
+            color: #fff;
+            text-decoration: none;
+            text-align: center;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .dir-btn:hover {
+            background: #2565b5;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 80px 20px;
+            color: #666;
+        }
+
+        .spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid #eee;
+            border-top-color: #E24B4A;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .expired {
+            text-align: center;
+            padding: 80px 20px;
+            color: #999;
+            font-size: 16px;
+            line-height: 1.7;
+        }
+
+        .expired b {
+            color: #E24B4A;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="banner">
+        <h1>🆘 RoadSoS Emergency Alert</h1>
+        <p>Someone shared their emergency location with you</p>
+    </div>
+
+    <div id="content">
+        <div class="loading">
+            <div class="spinner"></div>
+            Loading emergency location...
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const token = "{{ token }}";
+
+        async function loadSOS() {
+            try {
+                const resp = await fetch(`/api/sos/${token}`);
+                const data = await resp.json();
+
+                if (!resp.ok || data.error || data.expired) {
+                    document.getElementById("content").innerHTML = `
+          <div class="expired">
+            ⚠️ This SOS link has expired or is invalid.<br><br>
+            Call <b>112</b> for emergency assistance.
+          </div>`;
+                    return;
+                }
+
+                document.getElementById("content").innerHTML = `
+        <div id="map"></div>
+        <div class="info-card">
+          <h2><span class="pulse"></span> Emergency Details</h2>
+          <div class="info-row">
+            <span class="info-label">Message</span>
+            <span>${esc(data.message)}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Sent</span>
+            <span>${data.mins_ago} minute(s) ago</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Location</span>
+            <span>${data.lat.toFixed(5)}, ${data.lon.toFixed(5)}</span>
+          </div>
+          ${data.contact ? `
+          <div class="info-row">
+            <span class="info-label">Contact</span>
+            <span><a href="tel:${esc(data.contact)}">${esc(data.contact)}</a></span>
+          </div>` : ''}
+        </div>
+        <div class="btns">
+          <a href="tel:112" class="call-btn">📞 Call 112 — National Emergency</a>
+          <a href="${data.maps_url}" target="_blank" class="dir-btn">🗺️ Get Directions to Victim</a>
+        </div>`;
+
+                // Init Leaflet map
+                const map = L.map("map").setView([data.lat, data.lon], 15);
+                L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                    attribution: "© OpenStreetMap"
+                }).addTo(map);
+
+                // Pulsing red marker
+                const icon = L.divIcon({
+                    className: "",
+                    html: `<div style="
+          background:#E24B4A; width:22px; height:22px; border-radius:50%;
+          border:3px solid #fff;
+          box-shadow:0 0 0 5px rgba(226,75,74,0.3), 0 2px 8px rgba(0,0,0,0.3)">
+        </div>`,
+                    iconSize: [22, 22], iconAnchor: [11, 11],
+                });
+
+                L.marker([data.lat, data.lon], { icon })
+                    .addTo(map)
+                    .bindPopup(`<b>🆘 Emergency Location</b><br>${esc(data.message)}`)
+                    .openPopup();
+
+            } catch (e) {
+                document.getElementById("content").innerHTML = `
+        <div class="expired">
+          Failed to load SOS data.<br>
+          Please call <b>112</b> directly.
+        </div>`;
+            }
+        }
+
+        function esc(str) {
+            return String(str || "")
+                .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+
+        loadSOS();
+    </script>
+</body>
+
+</html>

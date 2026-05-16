@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!-- viewport-fit=cover fills notch/camera cutout on phones -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <meta name="theme-color" content="#E53935" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0D1B2A" media="(prefers-color-scheme: dark)">
+  <link rel="manifest" href="/static/manifest.json">
+
+  <!-- PWA / Install -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <!-- iOS Safari PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="RoadSoS">
+  <link rel="apple-touch-icon" href="/static/icon-192.png">
+  <!-- Windows -->
+  <meta name="msapplication-TileImage" content="/static/icon-192.png">
+  <meta name="msapplication-TileColor" content="#E53935">
+  <!-- SEO -->
+  <meta name="description" content="AI road emergency assistant — find hospitals, get first aid, share SOS. Works offline.">
+  <meta property="og:title" content="RoadSoS — AI Road Emergency Assistant">
+  <meta property="og:description" content="Find hospitals, get first aid, share SOS — works offline.">
+  <meta property="og:image" content="/static/icon-512.png">
+  <meta property="og:type" content="website">
+
+  <title>RoadSoS — AI Road Emergency Assistant</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css"/>
+  <link rel="stylesheet" href="/static/css/style3d.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+
+  <!-- ── iOS Safari viewport height fix ─────────────────────────────────────
+       Safari on iOS uses "100vh" = full screen height including browser chrome
+       which causes content to be clipped under the address bar.
+       We set a CSS custom property to the ACTUAL inner window height and keep
+       it updated on resize / orientation change.
+       ──────────────────────────────────────────────────────────────────── -->
+  <style>
+    /* Needed so -webkit-fill-available works on html element */
+    html { height: -webkit-fill-available; }
+  </style>
+  <script>
+    (function () {
+      function setAppHeight() {
+        // window.innerHeight = actual visible height (excludes browser chrome on iOS)
+        document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
+      }
+      setAppHeight();
+      window.addEventListener('resize', setAppHeight);
+      window.addEventListener('orientationchange', function () {
+        // Small delay: iOS fires orientationchange before it finishes resizing
+        setTimeout(setAppHeight, 150);
+      });
+    })();
+  </script>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div class="app" id="app">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M10 2L18 17H2L10 2Z" fill="rgba(255,255,255,0.95)"/>
+            <circle cx="10" cy="13" r="1.4" fill="#ff6b6b"/>
+            <rect x="9.3" y="7.5" width="1.4" height="3.5" rx="0.7" fill="#ff6b6b"/>
+          </svg>
+        </div>
+        <span class="logo-text">RoadSoS</span>
+      </div>
+      <span class="logo-tagline">AI Road Emergency Assistant</span>
+    </div>
+    <div class="header-right">
+      <select id="lang-select" class="lang-select" onchange="changeLang(this.value)">
+        <option value="en">🌐 EN</option>
+        <option value="te">తె TE</option>
+        <option value="hi">हि HI</option>
+        <option value="ta">த TA</option>
+      </select>
+      <button id="darkmode-btn" class="icon-btn" onclick="toggleDark()" title="Toggle dark mode">🌙</button>
+      <div id="mode-badge" class="mode-badge online">● LIVE</div>
+      <a href="/download" class="icon-btn" style="text-decoration:none;font-size:12px;font-weight:700;padding:6px 11px;" title="Download Android APK">⬇ APK</a>
+      <button class="sos-trigger-btn" onclick="triggerSOS()">🆘 SOS</button>
+    </div>
+  </header>
+
+  <!-- Real-time bar -->
+  <div class="rt-bar">
+    <div class="rt-indicator">
+      <div class="rt-dot connecting" id="rt-dot"></div>
+      <span id="rt-status-text">Connecting...</span>
+    </div>
+    <span class="rt-stat">👥 <b id="rt-users">1</b> active</span>
+    <span class="rt-stat">⚠ <b id="rt-incidents">0</b> incidents</span>
+    <span class="rt-stat">📡 <b id="rt-latency">--</b></span>
+    <!-- Safety Score badge -->
+    <div class="safety-score-badge" id="safety-badge" onclick="showSafetyDetails()">
+      <span class="safety-dot" id="safety-dot">●</span>
+      <span id="safety-label">Calculating safety...</span>
+    </div>
+    <span class="nearby-badge" id="rt-nearby-badge">Locating...</span>
+    <button class="rt-refresh-btn" id="rt-refresh-btn" onclick="manualRefresh()">↻ Refresh</button>
+  </div>
+
+  <!-- Location bar -->
+  <div id="location-bar" class="location-bar hidden">
+    <span>📍 GPS unavailable — enter your location:</span>
+    <input id="location-input" type="text" placeholder="Banjara Hills, Hyderabad  or  17.38, 78.48"
+           onkeydown="if(event.key==='Enter') setManualLocation()"/>
+    <button onclick="setManualLocation()">Set</button>
+  </div>
+
+  <!-- SOS Banner -->
+  <div id="sos-banner" class="sos-banner hidden">
+    <div class="sos-pulse-ring"></div>
+    <span class="sos-title">⚠ EMERGENCY DETECTED</span>
+    <div id="sos-numbers"></div>
+  </div>
+
+  <!-- Quick Numbers Bar -->
+  <div id="quick-bar" class="quick-bar hidden">
+    <span class="quick-label">⚡ Quick Dial</span>
+    <div id="quick-numbers"></div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="map-toolbar">
+    <button class="toolbar-btn active" id="btn-map"     onclick="setMapMode('map')">🗺 Map</button>
+    <button class="toolbar-btn"        id="btn-heat"    onclick="setMapMode('heatmap')">🔥 Heatmap</button>
+    <button class="toolbar-btn"        id="btn-report"  onclick="setMapMode('report')">⚠ Report</button>
+    <button class="toolbar-btn"        id="btn-sos"     onclick="openSOSShare()">📤 Share SOS</button>
+    <button class="toolbar-btn"        id="btn-injury"  onclick="openInjuryModal()">🩺 First Aid</button>
+    <button class="toolbar-btn"        id="btn-impact"  onclick="openImpactPanel()">📊 Impact</button>
+    <a href="/dashboard" class="toolbar-btn dashboard-link" target="_blank">🌐 3D Dashboard</a>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="map-panel" id="map-panel">
+      <div id="map"></div>
+
+      <!-- Coverage gap alert (shows when coverage is poor) -->
+      <div id="coverage-alert" class="coverage-alert hidden">
+        <span class="coverage-icon">⚠</span>
+        <div class="coverage-body">
+          <div class="coverage-title">Coverage Gap Detected</div>
+          <div class="coverage-sub" id="coverage-sub">Loading...</div>
+        </div>
+        <button onclick="document.getElementById('coverage-alert').classList.add('hidden')">✕</button>
+      </div>
+
+      <!-- Report mode overlay -->
+      <div id="report-overlay" class="report-overlay hidden">
+        <div class="report-prompt">📍 Tap on the map to place your report</div>
+      </div>
+
+      <!-- Route panel -->
+      <div id="route-panel" class="route-panel hidden">
+        <div class="route-panel-header">
+          <div>
+            <div id="route-title" class="route-title">Directions</div>
+            <div id="route-summary" class="route-summary"></div>
+          </div>
+          <button class="route-close" onclick="clearRoute()">✕</button>
+        </div>
+        <div id="route-steps" class="route-steps"></div>
+      </div>
+
+      <!-- Safety score overlay (corner widget) -->
+      <div id="safety-widget" class="safety-widget hidden">
+        <div class="safety-widget-header">
+          <span>🛡 Area Safety Score</span>
+          <button onclick="document.getElementById('safety-widget').classList.add('hidden')">✕</button>
+        </div>
+        <div class="safety-gauge-wrap">
+          <svg viewBox="0 0 120 70" class="safety-gauge">
+            <path d="M 10 65 A 55 55 0 0 1 110 65" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8" stroke-linecap="round"/>
+            <path id="gauge-fill" d="M 10 65 A 55 55 0 0 1 110 65" fill="none" stroke="#43A047" stroke-width="8" stroke-linecap="round" stroke-dasharray="0 173"/>
+            <text id="gauge-score" x="60" y="60" text-anchor="middle" font-size="22" font-weight="700" fill="white">--</text>
+          </svg>
+          <div id="safety-level-text" class="safety-level-text">Calculating...</div>
+        </div>
+        <div id="safety-factors" class="safety-factors"></div>
+        <div id="safety-recommendation" class="safety-recommendation"></div>
+      </div>
+
+      <div class="map-controls">
+        <button id="locate-btn" class="map-btn locate">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <circle cx="7" cy="7" r="2.5"/><line x1="7" y1="1" x2="7" y2="3"/>
+            <line x1="7" y1="11" x2="7" y2="13"/><line x1="1" y1="7" x2="3" y2="7"/>
+            <line x1="11" y1="7" x2="13" y2="7"/>
+          </svg>
+          Locate Me
+        </button>
+        <button class="map-btn" onclick="clearPins(); clearRoute();">✕ Clear</button>
+        <button class="map-btn safety-btn" onclick="showSafetyDetails()">🛡 Safety</button>
+      </div>
+    </div>
+
+    <!-- Chat panel -->
+    <div class="chat-panel">
+      <div class="chat-topbar">
+        <span>Emergency Chat</span>
+        <div id="typing-dots" class="typing-dots hidden"><span></span><span></span><span></span></div>
+      </div>
+      <div id="chat-messages" class="chat-messages">
+        <div class="msg bot">
+          <div class="avatar">R</div>
+          <div class="bubble">
+            Hi! I'm <strong>RoadSoS</strong> — your AI road emergency assistant.<br><br>
+            <b>Try asking:</b>
+            <div class="chips" id="suggestion-chips">
+              <button class="chip" onclick="useChip(this)">🏥 nearest hospital</button>
+              <button class="chip" onclick="useChip(this)">🚔 call police</button>
+              <button class="chip" onclick="useChip(this)">🚗 car broke down</button>
+              <button class="chip" onclick="useChip(this)">🚑 need ambulance now</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="chat-footer">
+        <div class="input-row">
+          <input id="chat-input" type="text" placeholder="Describe your emergency..."
+                 autocomplete="off" onkeydown="if(event.key==='Enter') sendMessage()"/>
+          <button id="mic-btn" class="mic-btn" title="Voice input">🎤</button>
+          <button id="send-btn" onclick="sendMessage()">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M1.5 8l12-6-5.5 6 5.5 6-12-6z" fill="white"/>
+            </svg>
+          </button>
+        </div>
+        <div class="input-hint">OpenStreetMap · AI-powered · Works offline · 30+ countries</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results panel -->
+  <div id="results-panel" class="results-panel hidden">
+    <div class="results-header">
+      <span id="results-title">Nearby Services</span>
+      <button onclick="document.getElementById('results-panel').classList.add('hidden')">✕</button>
+    </div>
+    <div id="results-list"></div>
+  </div>
+
+  <!-- Detail panel -->
+  <div id="detail-panel" class="detail-panel hidden">
+    <div class="detail-header">
+      <button class="detail-back" onclick="closeDetail()">← Back</button>
+      <span>Details</span>
+    </div>
+    <div class="detail-body">
+      <div class="detail-icon-wrap"><span id="detail-icon" class="detail-big-icon">🏥</span></div>
+      <div id="detail-name" class="detail-name"></div>
+      <div id="detail-dist" class="detail-dist-badge"></div>
+      <div id="detail-address" class="detail-field"></div>
+      <div id="bed-section" class="hidden">
+        <div class="detail-section-title">🛏 Bed Availability</div>
+        <div id="bed-info" class="bed-grid"></div>
+      </div>
+      <div class="detail-section-title">Contact</div>
+      <div id="detail-phones" class="detail-phones"></div>
+      <div class="detail-section-title">Get There</div>
+      <div class="detail-nav-row">
+        <button id="detail-nav-btn" class="detail-action-btn primary">🧭 Get Directions</button>
+        <button id="detail-map-btn" class="detail-action-btn secondary">📌 Show on Map</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Impact Panel -->
+  <div id="impact-panel" class="impact-panel hidden">
+    <div class="impact-header">
+      <span>📊 Social Impact Dashboard</span>
+      <button onclick="closeImpactPanel()">✕</button>
+    </div>
+    <div class="impact-body" id="impact-body">
+      <div class="impact-loading">Loading impact data...</div>
+    </div>
+  </div>
+
+  <!-- Report modal -->
+  <div id="report-modal" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span>⚠ Report Road Issue</span>
+        <button onclick="closeReportModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="report-type-grid" id="report-type-grid"></div>
+        <textarea id="report-desc" placeholder="Optional: describe the issue..." rows="2"></textarea>
+        <button class="modal-submit" onclick="submitReport()">Submit Report</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SOS Share modal -->
+  <div id="sos-modal" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span>📤 Share SOS Location</span>
+        <button onclick="document.getElementById('sos-modal').classList.add('hidden')">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:4px">Share your live location with emergency contacts.</p>
+        <input id="sos-contact" type="text" placeholder="Your name or contact (optional)"/>
+        <input id="sos-message" type="text" placeholder="Emergency message (optional)"/>
+        <button class="modal-submit" onclick="createSOSLink()">🔗 Generate SOS Link</button>
+        <div id="sos-link-result" class="sos-link-box hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Injury Assessment Modal -->
+  <div id="injury-modal" class="modal hidden">
+    <div class="modal-box injury-box">
+      <div class="injury-header">
+        <span>🩺 Injury Assessment</span>
+        <button onclick="closeInjuryModal()">✕</button>
+      </div>
+      <div class="injury-body">
+        <p class="injury-desc">Describe what happened and any symptoms. AI will give you first aid steps.</p>
+        <div class="injury-input-wrap">
+          <textarea id="injury-input" placeholder="e.g. suspected bone fracture, bleeding from head..." rows="3"></textarea>
+        </div>
+        <div class="injury-quick">
+          <span class="quick-select-label">Quick select:</span>
+          <div class="injury-chips">
+            <button class="injury-chip" onclick="selectInjury(this,'Severe bleeding')">🩸 Bleeding</button>
+            <button class="injury-chip" onclick="selectInjury(this,'Person is unconscious')">😵 Unconscious</button>
+            <button class="injury-chip" onclick="selectInjury(this,'Suspected bone fracture')">🦴 Fracture</button>
+            <button class="injury-chip" onclick="selectInjury(this,'Head injury')">🤕 Head Injury</button>
+            <button class="injury-chip" onclick="selectInjury(this,'Chest pain')">❤️ Chest Pain</button>
+            <button class="injury-chip" onclick="selectInjury(this,'Burns')">🔥 Burns</button>
+            <button class="injury-chip" onclick="selectInjury(this,'Spinal injury')">⚠ Spinal</button>
+            <button class="injury-chip" onclick="selectInjury(this,'Neck pain after accident')">🔴 Neck Pain</button>
+          </div>
+        </div>
+        <button id="injury-assess-btn" class="injury-assess-btn" onclick="assessInjury()">
+          <span id="injury-btn-text">🩺 Get First Aid Steps</span>
+        </button>
+        <div id="injury-result" class="injury-result hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- First aid panel -->
+  <div id="firstaid-panel" class="firstaid-panel hidden">
+    <div class="firstaid-header">
+      <span>🩺 First Aid Advice</span>
+      <button onclick="document.getElementById('firstaid-panel').classList.add('hidden')">✕</button>
+    </div>
+    <div id="firstaid-content" class="firstaid-content"></div>
+  </div>
+
+</div>
+
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+<script src="/static/js/map.js"></script>
+<script src="/static/js/chat.js"></script>
+<script src="/static/js/features.js"></script>
+<script src="/static/js/realtime.js"></script>
+<script src="/static/js/impact.js"></script>
+<script src="/static/js/three_bg.js"></script>
+
+<!-- ── RoadSoS Device Init ── -->
+<script>
+(function () {
+  'use strict';
+
+  /* ── Service Worker ───────────────────────────────────────────── */
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () =>
+      navigator.serviceWorker.register('/static/sw.js')
+        .then(r => console.log('[SW] registered', r.scope))
+        .catch(e => console.warn('[SW] failed', e))
+    );
+  }
+
+  /* ── Device detection ─────────────────────────────────────────── */
+  const ua = navigator.userAgent || '';
+  const w = window.innerWidth, h = window.innerHeight;
+  const coarse = matchMedia('(pointer: coarse)').matches;
+  const isAndroidAuto = /AndroidAuto|CarWebApp/i.test(ua);
+  const isCarPlay     = /CarPlay/i.test(ua);
+  const isCarDisplay  = (w > h && h <= 720 && w >= 480 && coarse);
+  const isTWA         = document.referrer.startsWith('android-app://') ||
+                        matchMedia('(display-mode: standalone)').matches;
+  const isTV          = w >= 1920 && !coarse;
+  const isWatch       = w <= 320;
+
+  /* Apply body class for CSS hooks */
+  const cls =
+    (isAndroidAuto || isCarPlay || isCarDisplay) ? 'device-car' :
+    isWatch   ? 'device-watch' :
+    isTV      ? 'device-tv'    :
+    isTWA     ? 'device-twa'   : 'device-mobile';
+  document.body.classList.add(cls);
+  if (isTWA)         document.body.classList.add('twa');
+  if (isAndroidAuto) document.body.classList.add('android-auto');
+  if (isCarPlay)     document.body.classList.add('carplay');
+
+  /* ── Car mode tweaks ─────────────────────────────────────────── */
+  if (isCarDisplay || isAndroidAuto || isCarPlay) {
+    window._carMode = true;
+    const canvas = document.getElementById('bg-canvas');
+    if (canvas) canvas.style.display = 'none';
+    // Enlarge any tap target still under 44px
+    window.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('button, a, select').forEach(el => {
+        const r = el.getBoundingClientRect();
+        if (r.height > 0 && r.height < 44) el.style.minHeight = '44px';
+      });
+    });
+  }
+
+  /* ── URL param auto-actions ──────────────────────────────────── */
+  const params = new URLSearchParams(location.search);
+  const autoAction = params.get('action');
+  const autoType   = params.get('type');
+  const autoPanel  = params.get('panel');
+  if (autoAction || autoType || autoPanel) {
+    window.addEventListener('appReady', () => {
+      if (autoAction === 'sos' && typeof triggerSOS === 'function') triggerSOS();
+      if (autoType && typeof findNearby === 'function') findNearby(autoType);
+      if (autoPanel === 'firstaid') {
+        const p = document.getElementById('firstaid-panel');
+        if (p) p.classList.remove('hidden');
+      }
+    }, { once: true });
+  }
+
+  /* ── PWA install banner ──────────────────────────────────────── */
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (!isTWA && !isCarDisplay) {
+      setTimeout(showInstallBanner, 4000);
+    }
+  });
+
+  function showInstallBanner() {
+    if (document.getElementById('_rs_install')) return;
+    const b = document.createElement('div');
+    b.id = '_rs_install';
+    b.style.cssText = [
+      'position:fixed;bottom:24px;left:50%;transform:translateX(-50%)',
+      'background:#1565C0;color:#fff;padding:11px 18px',
+      'border-radius:14px;font-size:13px;font-weight:600',
+      'display:flex;align-items:center;gap:12px',
+      'z-index:99999;box-shadow:0 6px 24px rgba(0,0,0,.45)',
+      'max-width:320px;width:calc(100% - 48px)'
+    ].join(';');
+    b.innerHTML = [
+      '<span>📲 Install RoadSoS — works offline</span>',
+      '<button onclick="window._rsInstall()" style="background:#fff;color:#1565C0;',
+        'border:none;border-radius:8px;padding:5px 13px;font-weight:700;',
+        'cursor:pointer;font-size:12px;white-space:nowrap">Install</button>',
+      '<button onclick="this.parentElement.remove()" style="background:transparent;',
+        'color:rgba(255,255,255,.7);border:none;cursor:pointer;font-size:19px;',
+        'line-height:1;padding:0 2px">✕</button>'
+    ].join('');
+    document.body.appendChild(b);
+  }
+
+  window._rsInstall = async function () {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+    }
+    const b = document.getElementById('_rs_install');
+    if (b) b.remove();
+  };
+
+  /* ── Connectivity badge ──────────────────────────────────────── */
+  function updateOnline() {
+    const badge = document.getElementById('mode-badge');
+    if (!badge || window._carMode) return;
+    if (navigator.onLine) {
+      badge.textContent = '● LIVE'; badge.style.color = '#4CAF50';
+    } else {
+      badge.textContent = '◌ OFFLINE'; badge.style.color = '#FF7043';
+    }
+  }
+  window.addEventListener('online',  updateOnline);
+  window.addEventListener('offline', updateOnline);
+})();
+</script>
+</body>
+</html>

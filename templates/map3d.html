@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoadSoS — 3D Map View</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, sans-serif;
+            background: #111827;
+            color: #fff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background: #0f172a;
+            border-bottom: 1px solid #1e293b;
+            flex-shrink: 0;
+        }
+
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-text {
+            font-size: 18px;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .logo-tag {
+            font-size: 11px;
+            color: #94a3b8;
+            background: #1e293b;
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+
+        .back-btn {
+            background: #1e293b;
+            color: #94a3b8;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 6px 14px;
+            font-size: 13px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            background: #334155;
+            color: #fff;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            background: #0f172a;
+            border-bottom: 1px solid #1e293b;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+
+        .ctrl-label {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .layer-btn {
+            background: #1e293b;
+            color: #94a3b8;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 5px 14px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .layer-btn.active {
+            background: #E24B4A;
+            color: #fff;
+            border-color: #E24B4A;
+        }
+
+        .layer-btn:hover:not(.active) {
+            background: #334155;
+            color: #fff;
+        }
+
+        #map {
+            flex: 1;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 16px;
+            z-index: 999;
+            background: rgba(15, 23, 42, 0.92);
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            padding: 12px 16px;
+            backdrop-filter: blur(8px);
+        }
+
+        .legend-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #cbd5e1;
+            margin: 5px 0;
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            z-index: 999;
+            background: rgba(15, 23, 42, 0.92);
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            padding: 14px 16px;
+            min-width: 200px;
+            backdrop-filter: blur(8px);
+        }
+
+        .info-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 10px;
+        }
+
+        .info-row {
+            font-size: 12px;
+            color: #cbd5e1;
+            margin: 6px 0;
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .info-val {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .map-wrapper {
+            position: relative;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <div class="header-logo">
+            <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
+                <polygon points="11,2 20,19 2,19" fill="#E24B4A" stroke="#fff" stroke-width="1.5"
+                    stroke-linejoin="round" />
+                <text x="11" y="16" text-anchor="middle" fill="#fff" font-size="9" font-weight="700"
+                    font-family="system-ui">!</text>
+            </svg>
+            <span class="logo-text">RoadSoS</span>
+            <span class="logo-tag">3D Map View</span>
+        </div>
+        <a href="/" class="back-btn">← Back to App</a>
+    </div>
+
+    <div class="controls">
+        <span class="ctrl-label">Layers:</span>
+        <button class="layer-btn active" onclick="setLayer('standard', this)">🗺 Standard</button>
+        <button class="layer-btn" onclick="setLayer('satellite', this)">🛰 Satellite</button>
+        <button class="layer-btn" onclick="setLayer('dark', this)">🌙 Dark</button>
+        <button class="layer-btn" onclick="setLayer('topo', this)">⛰ Terrain</button>
+        <span class="ctrl-label" style="margin-left:12px">Overlay:</span>
+        <button class="layer-btn" id="heatmap-btn" onclick="toggleHeatmap()">🔥 Heatmap</button>
+        <button class="layer-btn" id="services-btn" onclick="toggleServices()">📍 Services</button>
+    </div>
+
+    <div class="map-wrapper">
+        <div id="map"></div>
+
+        <div class="legend">
+            <div class="legend-title">Services</div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#E24B4A"></div> Hospital
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#2244AA"></div> Police
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#BA7517"></div> Ambulance
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#1D9E75"></div> Towing
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#D4622A"></div> Fire Station
+            </div>
+        </div>
+
+        <div class="info-panel" id="info-panel">
+            <div class="info-title">Map Info</div>
+            <div class="info-row"><span>Location</span><span class="info-val" id="info-loc">Detecting...</span></div>
+            <div class="info-row"><span>Zoom</span><span class="info-val" id="info-zoom">13</span></div>
+            <div class="info-row"><span>Services</span><span class="info-val" id="info-services">0 loaded</span></div>
+            <div class="info-row"><span>Data</span><span class="info-val" id="info-source">OpenStreetMap</span></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // ── Tile layers ──────────────────────────────────────────────────────────
+        const TILES = {
+            standard: L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                attribution: "© OpenStreetMap", maxZoom: 19
+            }),
+            satellite: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+                attribution: "© Esri", maxZoom: 19
+            }),
+            dark: L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+                attribution: "© CartoDB", maxZoom: 19
+            }),
+            topo: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
+                attribution: "© OpenTopoMap", maxZoom: 17
+            }),
+        };
+
+        const PIN_COLORS = {
+            hospital: "#E24B4A", police: "#2244AA",
+            ambulance: "#BA7517", towing: "#1D9E75", fire: "#D4622A"
+        };
+
+        let map, currentLayer, servicesLayer, heatLayer;
+        let showServices = false, showHeatmap = false;
+        let serviceCount = 0;
+
+        // ── Init ─────────────────────────────────────────────────────────────────
+        function init(lat, lon) {
+            map = L.map("map", { zoomControl: true }).setView([lat, lon], 13);
+            currentLayer = TILES.standard;
+            currentLayer.addTo(map);
+
+            servicesLayer = L.layerGroup();
+            heatLayer = L.layerGroup();
+
+            // Update info panel on zoom/move
+            map.on("zoomend moveend", () => {
+                document.getElementById("info-zoom").textContent = map.getZoom();
+                const c = map.getCenter();
+                document.getElementById("info-loc").textContent =
+                    `${c.lat.toFixed(3)}, ${c.lng.toFixed(3)}`;
+            });
+
+            // User location marker
+            L.circleMarker([lat, lon], {
+                radius: 8, fillColor: "#378ADD", color: "#fff",
+                weight: 3, fillOpacity: 1
+            }).addTo(map).bindPopup("<b>📍 You are here</b>");
+
+            // Load initial data
+            loadServices(lat, lon);
+            loadHeatmap(lat, lon);
+        }
+
+        // ── Layer switching ───────────────────────────────────────────────────────
+        function setLayer(name, btn) {
+            document.querySelectorAll(".layer-btn").forEach(b => {
+                if (["standard", "satellite", "dark", "topo"].some(l => b.onclick?.toString().includes(l))) {
+                    b.classList.remove("active");
+                }
+            });
+            btn.classList.add("active");
+            map.removeLayer(currentLayer);
+            currentLayer = TILES[name];
+            currentLayer.addTo(map);
+            document.getElementById("info-source").textContent =
+                name === "satellite" ? "Esri Satellite" :
+                    name === "dark" ? "CartoDB Dark" :
+                        name === "topo" ? "OpenTopoMap" : "OpenStreetMap";
+        }
+
+        // ── Services toggle ───────────────────────────────────────────────────────
+        function toggleServices() {
+            showServices = !showServices;
+            document.getElementById("services-btn").classList.toggle("active", showServices);
+            if (showServices) {
+                servicesLayer.addTo(map);
+            } else {
+                map.removeLayer(servicesLayer);
+            }
+        }
+
+        // ── Heatmap toggle ────────────────────────────────────────────────────────
+        function toggleHeatmap() {
+            showHeatmap = !showHeatmap;
+            document.getElementById("heatmap-btn").classList.toggle("active", showHeatmap);
+            if (showHeatmap) {
+                heatLayer.addTo(map);
+            } else {
+                map.removeLayer(heatLayer);
+            }
+        }
+
+        // ── Load nearby services ──────────────────────────────────────────────────
+        async function loadServices(lat, lon) {
+            try {
+                const resp = await fetch(`/api/nearby?lat=${lat}&lon=${lon}&type=all&radius=8000`);
+                const data = await resp.json();
+                servicesLayer.clearLayers();
+                serviceCount = 0;
+
+                const results = data.results || {};
+                Object.entries(results).forEach(([type, items]) => {
+                    (items || []).forEach(item => {
+                        const color = PIN_COLORS[type] || "#888";
+                        const marker = L.circleMarker([item.lat, item.lon], {
+                            radius: 8, fillColor: color, color: "#fff",
+                            weight: 2, fillOpacity: 0.9
+                        }).bindPopup(`
+            <b>${item.name}</b><br>
+            <span style="color:${color};font-weight:600">${type}</span><br>
+            ${item.distance_text} away
+            ${item.phone ? `<br><a href="tel:${item.phone}">📞 ${item.phone}</a>` : ""}
+          `);
+                        servicesLayer.addLayer(marker);
+                        serviceCount++;
+                    });
+                });
+
+                document.getElementById("info-services").textContent = `${serviceCount} loaded`;
+            } catch (e) {
+                console.warn("Services load failed:", e);
+            }
+        }
+
+        // ── Load heatmap ──────────────────────────────────────────────────────────
+        async function loadHeatmap(lat, lon) {
+            try {
+                const resp = await fetch(`/api/heatmap?lat=${lat}&lon=${lon}`);
+                const data = await resp.json();
+                heatLayer.clearLayers();
+
+                (data.points || []).forEach(pt => {
+                    const r = Math.round(pt.weight * 12) + 4;
+                    const opacity = 0.2 + pt.weight * 0.5;
+                    L.circleMarker([pt.lat, pt.lon], {
+                        radius: r, fillColor: "#E24B4A", color: "none",
+                        fillOpacity: opacity, interactive: false
+                    }).addTo(heatLayer);
+                });
+            } catch (e) {
+                console.warn("Heatmap load failed:", e);
+            }
+        }
+
+        // ── Boot ──────────────────────────────────────────────────────────────────
+        window.addEventListener("load", () => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    pos => init(pos.coords.latitude, pos.coords.longitude),
+                    () => init(17.3850, 78.4867)   // fallback: Hyderabad
+                );
+            } else {
+                init(17.3850, 78.4867);
+            }
+        });
+    </script>
+</body>
+
+</html>

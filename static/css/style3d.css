@@ -1,0 +1,590 @@
+/* ── Force dark background behind 3D canvas ─────────────────────────────── */
+html, body {
+  margin: 0 !important; padding: 0 !important;
+  background: #0D1B2A !important;
+  /* NOTE: overflow:hidden removed — it breaks mobile scroll.
+     Desktop/car modes set it via their own media queries.
+     NOTE: height:100% removed — mobile @media rules set height/min-height
+     correctly per device; !important here would override them.             */
+}
+/* Kill any default browser spacing */
+* { box-sizing: border-box; }
+
+/* ── iOS Safari 100vh / dvh polyfill ────────────────────────────────────── */
+/* Set a CSS custom property that JS (below, in index.html) keeps updated.
+   Falls back to 100vh when dvh is unsupported.                              */
+:root {
+  --app-height: 100vh;   /* overwritten by JS on mobile */
+  --header-h: 54px;
+  --rt-bar-h: 25px;
+  --toolbar-h: 38px;
+  --chrome-h: calc(var(--header-h) + var(--rt-bar-h) + var(--toolbar-h));
+}
+@supports (height: 100dvh) {
+  :root { --app-height: 100dvh; }
+}
+
+/* ── 3D canvas — must track true viewport, not 100vh ────────────────────── */
+#bg-canvas {
+  height: var(--app-height) !important;
+}
+
+/* Override light theme vars for 3D mode */
+:root {
+  --bg:   #0D1B2A !important;
+  --card: rgba(20,36,56,0.8) !important;
+  --text: #E8EDF2 !important;
+  --muted: #8899AA !important;
+  --border: rgba(255,255,255,0.08) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RoadSoS — 3D UI Design System
+   Glassmorphism + Neumorphism + Three.js integration
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 3D Canvas background ────────────────────────────────────────────────── */
+#bg-canvas {
+  position: fixed !important;
+  top: 0 !important; left: 0 !important;
+  width: 100vw !important;
+  /* height set above via --app-height */
+  z-index: 0 !important; pointer-events: none !important;
+  opacity: 0.65; display: block !important;
+  margin: 0 !important; padding: 0 !important;
+  border: none !important; outline: none !important;
+}
+
+/* All UI elements sit above canvas */
+.app { position: relative; z-index: 1; background: transparent; }
+
+/* ── Glass morphism base ─────────────────────────────────────────────────── */
+.glass {
+  background: rgba(13, 27, 42, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+/* ── Header — 3D glass ───────────────────────────────────────────────────── */
+.header {
+  background: rgba(8, 18, 30, 0.88) !important;
+  backdrop-filter: blur(24px) saturate(200%) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.04) !important;
+}
+
+/* Logo icon — 3D push effect */
+.logo-icon {
+  background: linear-gradient(135deg, #E53935 0%, #B71C1C 100%) !important;
+  box-shadow: 0 4px 12px rgba(229,57,53,0.5), inset 0 1px 0 rgba(255,255,255,0.2) !important;
+  transform: perspective(100px) rotateX(5deg);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.logo-icon:hover {
+  transform: perspective(100px) rotateX(0deg) scale(1.05);
+  box-shadow: 0 6px 20px rgba(229,57,53,0.7), inset 0 1px 0 rgba(255,255,255,0.2) !important;
+}
+
+/* ── Real-time bar — glass ───────────────────────────────────────────────── */
+.rt-bar {
+  background: rgba(6, 14, 24, 0.85) !important;
+  backdrop-filter: blur(16px) !important;
+  border-bottom: 1px solid rgba(0,188,212,0.15) !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3) !important;
+}
+
+/* ── Toolbar — floating glass pill ──────────────────────────────────────────*/
+.map-toolbar {
+  background: rgba(10, 22, 36, 0.82) !important;
+  backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
+  padding: 8px 16px !important;
+}
+
+.toolbar-btn {
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  color: rgba(255,255,255,0.6) !important;
+  border-radius: 24px !important;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.2px;
+  position: relative; overflow: hidden;
+}
+.toolbar-btn::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 100%);
+  opacity: 0; transition: opacity 0.2s;
+}
+.toolbar-btn:hover::before { opacity: 1; }
+.toolbar-btn:hover {
+  transform: translateY(-2px) scale(1.03) !important;
+  border-color: rgba(255,255,255,0.25) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3) !important;
+}
+.toolbar-btn.active {
+  background: linear-gradient(135deg, #1565C0 0%, #0D47A1 100%) !important;
+  border-color: rgba(33,150,243,0.4) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 16px rgba(21,101,192,0.5), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+}
+.dashboard-link {
+  background: linear-gradient(135deg, rgba(0,188,212,0.15) 0%, rgba(0,96,100,0.2) 100%) !important;
+  border-color: rgba(0,188,212,0.35) !important;
+  color: #00E5FF !important;
+  box-shadow: 0 0 12px rgba(0,188,212,0.2), inset 0 1px 0 rgba(255,255,255,0.05) !important;
+  animation: dashGlow 2.5s ease-in-out infinite alternate !important;
+}
+@keyframes dashGlow {
+  from { box-shadow: 0 0 8px rgba(0,188,212,0.2); }
+  to   { box-shadow: 0 0 20px rgba(0,188,212,0.5), 0 0 40px rgba(0,188,212,0.15); }
+}
+
+/* ── SOS button — 3D pulsing ─────────────────────────────────────────────── */
+.sos-trigger-btn {
+  background: linear-gradient(135deg, #E53935 0%, #B71C1C 100%) !important;
+  box-shadow: 0 4px 16px rgba(229,57,53,0.5), inset 0 1px 0 rgba(255,255,255,0.2) !important;
+  border-radius: 10px !important;
+  animation: sosBtnPulse 2s ease-in-out infinite !important;
+  font-weight: 800 !important; letter-spacing: 0.5px;
+  transform: perspective(200px) rotateX(3deg);
+}
+@keyframes sosBtnPulse {
+  0%,100% { box-shadow: 0 4px 16px rgba(229,57,53,0.5), inset 0 1px 0 rgba(255,255,255,0.2); }
+  50%     { box-shadow: 0 4px 28px rgba(229,57,53,0.8), 0 0 0 6px rgba(229,57,53,0.15), inset 0 1px 0 rgba(255,255,255,0.2); }
+}
+.sos-trigger-btn:hover {
+  transform: perspective(200px) rotateX(0deg) translateY(-2px) scale(1.05) !important;
+}
+
+/* ── Chat panel — deep glass ─────────────────────────────────────────────── */
+.chat-panel {
+  background: rgba(10, 20, 34, 0.85) !important;
+  backdrop-filter: blur(24px) !important;
+  border-left: 1px solid rgba(255,255,255,0.06) !important;
+  box-shadow: -8px 0 32px rgba(0,0,0,0.4) !important;
+}
+
+.chat-topbar {
+  background: rgba(6, 14, 24, 0.9) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+  color: rgba(255,255,255,0.9) !important;
+}
+
+/* ── Chat bubbles — 3D glass ─────────────────────────────────────────────── */
+.msg.bot .bubble {
+  background: rgba(27, 43, 63, 0.8) !important;
+  border: 1px solid rgba(255,255,255,0.07) !important;
+  backdrop-filter: blur(12px) !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05) !important;
+  color: rgba(255,255,255,0.9) !important;
+  border-radius: 16px 16px 16px 4px !important;
+}
+.msg.user .bubble {
+  background: linear-gradient(135deg, #1565C0 0%, #0D47A1 100%) !important;
+  box-shadow: 0 4px 16px rgba(21,101,192,0.4), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+  border-radius: 16px 16px 4px 16px !important;
+}
+.msg.error .bubble {
+  background: rgba(183,28,28,0.3) !important;
+  border: 1px solid rgba(229,57,53,0.3) !important;
+}
+
+/* Avatars */
+.avatar {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+  border: 2px solid rgba(255,255,255,0.1) !important;
+}
+.msg.bot .avatar {
+  background: linear-gradient(135deg, #E53935, #B71C1C) !important;
+}
+.msg.user .avatar {
+  background: linear-gradient(135deg, #1565C0, #0D47A1) !important;
+}
+
+/* ── Suggestion chips — glass ────────────────────────────────────────────── */
+.chip {
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  color: rgba(255,255,255,0.75) !important;
+  backdrop-filter: blur(8px) !important;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+.chip:hover {
+  background: rgba(33,150,243,0.2) !important;
+  border-color: rgba(33,150,243,0.5) !important;
+  color: #fff !important;
+  transform: translateY(-2px) scale(1.04) !important;
+  box-shadow: 0 4px 12px rgba(21,101,192,0.3) !important;
+}
+
+/* ── Chat input — glass ──────────────────────────────────────────────────── */
+.chat-footer {
+  background: rgba(6, 14, 24, 0.9) !important;
+  border-top: 1px solid rgba(255,255,255,0.06) !important;
+}
+#chat-input {
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  color: rgba(255,255,255,0.9) !important;
+  backdrop-filter: blur(8px) !important;
+  border-radius: 12px !important;
+  transition: all 0.2s !important;
+}
+#chat-input::placeholder { color: rgba(255,255,255,0.3) !important; }
+#chat-input:focus {
+  border-color: rgba(33,150,243,0.5) !important;
+  background: rgba(255,255,255,0.08) !important;
+  box-shadow: 0 0 0 3px rgba(21,101,192,0.2), 0 4px 16px rgba(0,0,0,0.3) !important;
+}
+#send-btn {
+  background: linear-gradient(135deg, #E53935 0%, #B71C1C 100%) !important;
+  box-shadow: 0 4px 12px rgba(229,57,53,0.4), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+  border-radius: 12px !important;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+#send-btn:hover {
+  transform: scale(1.08) !important;
+  box-shadow: 0 6px 20px rgba(229,57,53,0.6) !important;
+}
+.mic-btn {
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: 12px !important;
+  transition: all 0.2s !important;
+}
+.mic-btn:hover {
+  background: rgba(33,150,243,0.2) !important;
+  border-color: rgba(33,150,243,0.4) !important;
+  transform: scale(1.05) !important;
+}
+
+/* ── Results panel — glass ───────────────────────────────────────────────── */
+.results-panel {
+  background: rgba(8, 18, 32, 0.92) !important;
+  backdrop-filter: blur(24px) !important;
+  border-top: 1px solid rgba(255,255,255,0.08) !important;
+  border-right: 1px solid rgba(255,255,255,0.05) !important;
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.5) !important;
+}
+.results-header {
+  background: rgba(6, 14, 24, 0.95) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+  color: rgba(255,255,255,0.9) !important;
+}
+
+/* Result cards — 3D glass */
+.result-card {
+  background: rgba(20, 36, 56, 0.7) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  backdrop-filter: blur(12px) !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04) !important;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+.result-card:hover {
+  background: rgba(30, 50, 80, 0.85) !important;
+  border-color: rgba(33,150,243,0.35) !important;
+  transform: translateY(-3px) scale(1.02) !important;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.4), 0 0 0 1px rgba(33,150,243,0.2), inset 0 1px 0 rgba(255,255,255,0.08) !important;
+}
+.result-name { color: rgba(255,255,255,0.95) !important; }
+.result-addr { color: rgba(255,255,255,0.45) !important; }
+.result-dist { color: #40C4FF !important; }
+
+/* Action buttons */
+.nav-btn {
+  background: linear-gradient(135deg, #1565C0, #0D47A1) !important;
+  box-shadow: 0 3px 10px rgba(21,101,192,0.4) !important;
+  border: none !important;
+}
+.call-btn, .map-btn-sm {
+  background: rgba(67,160,71,0.15) !important;
+  border: 1px solid rgba(67,160,71,0.35) !important;
+  color: #69F0AE !important;
+}
+
+/* Source badges */
+.source-live  { background: rgba(67,160,71,0.2)  !important; color: #69F0AE !important; border: 1px solid rgba(67,160,71,0.3) !important; }
+.source-cache { background: rgba(255,143,0,0.2) !important; color: #FFD54F !important; border: 1px solid rgba(255,143,0,0.3) !important; }
+
+/* ── Map controls — glass pills ──────────────────────────────────────────── */
+.map-btn {
+  background: rgba(10, 22, 38, 0.85) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  backdrop-filter: blur(16px) !important;
+  color: rgba(255,255,255,0.8) !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05) !important;
+  border-radius: 10px !important;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+.map-btn:hover {
+  background: rgba(21,101,192,0.3) !important;
+  border-color: rgba(33,150,243,0.4) !important;
+  color: #fff !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.5) !important;
+}
+
+/* ── Route panel — deep glass ────────────────────────────────────────────── */
+.route-panel {
+  background: rgba(6, 14, 24, 0.92) !important;
+  backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+}
+.route-panel-header { background: linear-gradient(135deg, #0D47A1 0%, #1565C0 100%) !important; }
+.route-step { border-color: rgba(255,255,255,0.05) !important; }
+.route-step:hover { background: rgba(255,255,255,0.04) !important; }
+.step-instruction { color: rgba(255,255,255,0.85) !important; }
+
+/* ── Detail panel — glass ────────────────────────────────────────────────── */
+.detail-panel {
+  background: rgba(8, 18, 32, 0.95) !important;
+  backdrop-filter: blur(28px) !important;
+  border-left: 1px solid rgba(255,255,255,0.08) !important;
+  box-shadow: -12px 0 40px rgba(0,0,0,0.6) !important;
+}
+.detail-header {
+  background: rgba(6, 14, 24, 0.95) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+  color: rgba(255,255,255,0.9) !important;
+}
+.detail-field {
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.07) !important;
+  color: rgba(255,255,255,0.65) !important;
+}
+.detail-name { color: rgba(255,255,255,0.95) !important; }
+.detail-dist-badge {
+  background: rgba(33,150,243,0.15) !important;
+  border: 1px solid rgba(33,150,243,0.3) !important;
+  color: #40C4FF !important;
+}
+
+/* ── Quick bar — glass ───────────────────────────────────────────────────── */
+.quick-bar {
+  background: rgba(230,130,0,0.12) !important;
+  backdrop-filter: blur(16px) !important;
+  border-bottom: 1px solid rgba(255,143,0,0.2) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
+}
+.quick-chip {
+  background: rgba(255,255,255,0.07) !important;
+  border: 1px solid rgba(255,143,0,0.25) !important;
+  color: rgba(255,255,255,0.8) !important;
+  backdrop-filter: blur(8px) !important;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+.quick-chip:hover {
+  background: rgba(255,143,0,0.2) !important;
+  border-color: rgba(255,143,0,0.5) !important;
+  color: #FFD54F !important;
+  transform: translateY(-1px) scale(1.05) !important;
+}
+
+/* ── SOS banner — animated 3D ────────────────────────────────────────────── */
+.sos-banner {
+  background: linear-gradient(90deg, rgba(183,28,28,0.95), rgba(229,57,53,0.95)) !important;
+  backdrop-filter: blur(12px) !important;
+  border-bottom: 1px solid rgba(255,100,100,0.3) !important;
+  box-shadow: 0 4px 24px rgba(229,57,53,0.5) !important;
+}
+.sos-num {
+  background: rgba(255,255,255,0.15) !important;
+  border: 1px solid rgba(255,255,255,0.25) !important;
+  backdrop-filter: blur(4px) !important;
+  transition: all 0.2s !important;
+}
+.sos-num:hover {
+  background: rgba(255,255,255,0.3) !important;
+  transform: scale(1.05) !important;
+}
+
+/* ── Location bar — glass ────────────────────────────────────────────────── */
+.location-bar {
+  background: rgba(30,40,80,0.85) !important;
+  backdrop-filter: blur(16px) !important;
+  border-bottom: 1px solid rgba(100,130,255,0.2) !important;
+  color: rgba(160,180,255,0.9) !important;
+}
+.location-bar input {
+  background: rgba(255,255,255,0.07) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  color: rgba(255,255,255,0.9) !important;
+}
+.location-bar input:focus {
+  border-color: rgba(33,150,243,0.5) !important;
+  box-shadow: 0 0 0 3px rgba(21,101,192,0.2) !important;
+}
+
+/* ── Modals — glass ──────────────────────────────────────────────────────── */
+.modal { background: rgba(0,0,0,0.7) !important; backdrop-filter: blur(8px) !important; }
+.modal-box {
+  background: rgba(8, 18, 34, 0.95) !important;
+  backdrop-filter: blur(28px) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.05) !important;
+}
+.modal-header {
+  background: rgba(6, 14, 24, 0.9) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+  color: rgba(255,255,255,0.9) !important;
+}
+.modal-body input, .modal-body textarea {
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  color: rgba(255,255,255,0.9) !important;
+}
+.modal-body input::placeholder, .modal-body textarea::placeholder { color: rgba(255,255,255,0.3) !important; }
+
+/* Injury modal */
+.injury-header { box-shadow: 0 4px 20px rgba(229,57,53,0.4) !important; }
+.injury-chip {
+  background: rgba(255,255,255,0.05) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  color: rgba(255,255,255,0.7) !important;
+}
+.injury-chip:hover {
+  background: rgba(229,57,53,0.2) !important;
+  border-color: rgba(229,57,53,0.5) !important;
+  color: #fff !important;
+  transform: translateY(-2px) scale(1.05) !important;
+}
+.injury-chip.selected {
+  background: linear-gradient(135deg, #E53935, #B71C1C) !important;
+  box-shadow: 0 4px 12px rgba(229,57,53,0.4) !important;
+}
+.injury-result {
+  background: rgba(51,105,30,0.2) !important;
+  border: 1px solid rgba(104,159,56,0.35) !important;
+}
+
+/* Report type buttons */
+.report-type-btn {
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  color: rgba(255,255,255,0.8) !important;
+}
+.report-type-btn:hover {
+  background: rgba(33,150,243,0.15) !important;
+  border-color: rgba(33,150,243,0.4) !important;
+  transform: translateY(-2px) scale(1.05) !important;
+}
+.report-type-btn.selected {
+  background: rgba(229,57,53,0.2) !important;
+  border-color: rgba(229,57,53,0.5) !important;
+}
+
+/* ── Typing dots ─────────────────────────────────────────────────────────── */
+.typing-dots span { background: rgba(0,188,212,0.7) !important; }
+
+/* ── Input hint ──────────────────────────────────────────────────────────── */
+.input-hint { color: rgba(255,255,255,0.25) !important; }
+
+/* ── Scrollbar — dark glass ──────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+
+/* ── Map pin labels ──────────────────────────────────────────────────────── */
+.leaflet-popup-content-wrapper {
+  background: rgba(8, 18, 34, 0.95) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  color: rgba(255,255,255,0.9) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6) !important;
+}
+.leaflet-popup-tip { background: rgba(8, 18, 34, 0.95) !important; }
+
+/* ── First aid panel ─────────────────────────────────────────────────────── */
+.firstaid-panel {
+  background: rgba(8, 18, 34, 0.95) !important;
+  backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(67,160,71,0.2) !important;
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.5) !important;
+}
+.firstaid-header {
+  background: rgba(27, 94, 32, 0.5) !important;
+  border-bottom: 1px solid rgba(67,160,71,0.2) !important;
+  color: #69F0AE !important;
+}
+.firstaid-step { color: rgba(255,255,255,0.8) !important; border-color: rgba(255,255,255,0.05) !important; }
+
+/* ── Mode badge ──────────────────────────────────────────────────────────── */
+.mode-badge.online {
+  background: rgba(46,125,50,0.25) !important;
+  color: #69F0AE !important;
+  border: 1px solid rgba(67,160,71,0.4) !important;
+  box-shadow: 0 0 10px rgba(67,160,71,0.2) !important;
+}
+.mode-badge.offline {
+  background: rgba(230,81,0,0.2) !important;
+  color: #FFD54F !important;
+  border: 1px solid rgba(255,143,0,0.4) !important;
+}
+
+/* ── Bed availability cards ──────────────────────────────────────────────── */
+.bed-card {
+  background: rgba(255,255,255,0.04) !important;
+  border-left-color: inherit !important;
+}
+.bed-type  { color: rgba(255,255,255,0.4) !important; }
+.bed-count { font-family: 'DM Mono', monospace !important; }
+
+/* ── SOS link box ────────────────────────────────────────────────────────── */
+.sos-link-url {
+  background: rgba(255,255,255,0.05) !important;
+  border: 1px solid rgba(33,150,243,0.2) !important;
+  color: #40C4FF !important;
+}
+
+/* ── Toast notifications ─────────────────────────────────────────────────── */
+.incident-toast {
+  background: rgba(15, 30, 50, 0.95) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255,143,0,0.3) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6) !important;
+}
+
+/* ── 3D transform animations for panels ─────────────────────────────────── */
+.results-panel {
+  animation: panelRise 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+@keyframes panelRise {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.detail-panel {
+  animation: detailSlide 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+@keyframes detailSlide {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+.route-panel {
+  animation: routeDrop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+@keyframes routeDrop {
+  from { transform: translateY(-20px); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+/* ── Hover lift effect on interactive elements ───────────────────────────── */
+.map-btn, .chip, .quick-chip, .toolbar-btn, .result-card {
+  will-change: transform;
+}
+
+/* ── Focus glow ──────────────────────────────────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid rgba(33,150,243,0.6) !important;
+  outline-offset: 2px;
+}

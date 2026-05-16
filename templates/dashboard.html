@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RoadSoS — 3D Dashboard</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap"
+    rel="stylesheet">
+  <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --red: #E53935;
+      --navy: #0D1B2A;
+      --navyMid: #1B2B3B;
+      --teal: #00BCD4;
+      --amber: #FF8F00;
+      --green: #43A047;
+      --card: rgba(27, 43, 59, 0.92);
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #E8EDF2;
+      --muted: #8899AA;
+    }
+
+    body {
+      background: var(--navy);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      height: 100vh;
+      overflow: hidden
+    }
+
+    /* Header */
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      height: 52px;
+      background: rgba(13, 27, 42, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+    }
+
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .logo-icon {
+      width: 30px;
+      height: 30px;
+      background: var(--red);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px
+    }
+
+    .logo-text {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff
+    }
+
+    .header-nav {
+      display: flex;
+      gap: 8px
+    }
+
+    .nav-btn {
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+    }
+
+    .nav-btn:hover,
+    .nav-btn.active {
+      background: var(--red);
+      color: #fff;
+      border-color: var(--red)
+    }
+
+    .back-btn {
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--teal);
+      font-family: 'DM Sans', sans-serif;
+      text-decoration: none;
+    }
+
+    .back-btn:hover {
+      background: rgba(0, 188, 212, 0.15)
+    }
+
+    /* Map container */
+    #map3d {
+      position: fixed;
+      inset: 52px 0 0 0
+    }
+
+    #map3d canvas {
+      outline: none
+    }
+
+    /* Overlay panels */
+    .overlay {
+      position: fixed;
+      z-index: 500;
+      background: var(--card);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Stats panel — top left */
+    .stats-panel {
+      top: 68px;
+      left: 16px;
+      width: 220px;
+      padding: 14px
+    }
+
+    .stats-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px
+    }
+
+    .stat-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border)
+    }
+
+    .stat-row:last-child {
+      border: none
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--muted)
+    }
+
+    .stat-value {
+      font-size: 18px;
+      font-weight: 700;
+      font-family: 'DM Mono', monospace
+    }
+
+    .stat-value.red {
+      color: var(--red)
+    }
+
+    .stat-value.teal {
+      color: var(--teal)
+    }
+
+    .stat-value.amber {
+      color: var(--amber)
+    }
+
+    .stat-value.green {
+      color: var(--green)
+    }
+
+    .stat-change {
+      font-size: 10px;
+      color: var(--green);
+      font-weight: 600
+    }
+
+    .stat-change.down {
+      color: var(--red)
+    }
+
+    /* Layer controls — top right */
+    .layer-panel {
+      top: 68px;
+      right: 16px;
+      width: 200px;
+      padding: 14px
+    }
+
+    .layer-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px
+    }
+
+    .layer-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+
+    .layer-toggle:last-child {
+      border: none
+    }
+
+    .layer-name {
+      font-size: 12px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px
+    }
+
+    .layer-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0
+    }
+
+    .toggle-switch {
+      width: 32px;
+      height: 18px;
+      border-radius: 9px;
+      background: var(--border);
+      position: relative;
+      transition: background 0.2s;
+      cursor: pointer;
+    }
+
+    .toggle-switch.on {
+      background: var(--teal)
+    }
+
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #fff;
+      transition: left 0.2s;
+    }
+
+    .toggle-switch.on::after {
+      left: 16px
+    }
+
+    /* Chart panel — bottom */
+    .chart-panel {
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(640px, calc(100vw - 280px));
+      padding: 16px;
+    }
+
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px
+    }
+
+    .chart-title {
+      font-size: 13px;
+      font-weight: 700
+    }
+
+    .chart-tabs {
+      display: flex;
+      gap: 6px
+    }
+
+    .chart-tab {
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: transparent;
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.15s;
+    }
+
+    .chart-tab.active {
+      background: var(--teal);
+      color: #fff;
+      border-color: var(--teal)
+    }
+
+    .chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 110px;
+    }
+
+    #incident-chart {
+      position: absolute;
+      inset: 0;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    /* Tooltip */
+    .map-tooltip {
+      position: fixed;
+      z-index: 600;
+      pointer-events: none;
+      background: var(--card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 12px;
+      min-width: 160px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      transition: opacity 0.15s;
+    }
+
+    .tooltip-title {
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 6px
+    }
+
+    .tooltip-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      color: var(--muted);
+      margin-top: 3px
+    }
+
+    .tooltip-val {
+      font-weight: 600;
+      color: var(--text);
+      font-family: 'DM Mono', monospace
+    }
+
+    /* Legend */
+    .legend {
+      position: fixed;
+      bottom: 170px;
+      right: 16px;
+      z-index: 500;
+      background: var(--card);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      min-width: 140px;
+    }
+
+    .legend-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px
+    }
+
+    .legend-bar {
+      width: 20px;
+      height: 10px;
+      border-radius: 2px
+    }
+
+    .legend-label {
+      font-size: 11px;
+      color: var(--muted)
+    }
+
+    /* View mode buttons */
+    .view-controls {
+      position: fixed;
+      bottom: 170px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 500;
+      display: flex;
+      flex-direction: row;
+      gap: 6px;
+      flex-wrap: nowrap;
+    }
+
+    .view-btn {
+      background: var(--card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .view-btn:hover,
+    .view-btn.active {
+      background: var(--red);
+      color: #fff;
+      border-color: var(--red)
+    }
+
+    /* Animated pulse for active incidents */
+    @keyframes pulse {
+      0% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0.4
+      }
+
+      100% {
+        opacity: 1
+      }
+    }
+
+    .live-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+      animation: pulse 1.5s infinite;
+      margin-right: 6px
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-logo">
+      <div class="logo-icon">▲</div>
+      <span class="logo-text">RoadSoS</span>
+      <span style="font-size:11px;color:var(--muted);margin-left:8px">3D Analytics Dashboard</span>
+    </div>
+    <div class="header-nav">
+      <button class="nav-btn active" onclick="setView('heatmap')">🔥 Risk Heatmap</button>
+      <button class="nav-btn" onclick="setView('buildings')">🏙 3D Buildings</button>
+      <button class="nav-btn" onclick="setView('traffic')">🚦 Traffic Flow</button>
+      <button class="nav-btn" onclick="setView('route')">🧭 Route Fly</button>
+    </div>
+    <a href="/" class="back-btn">← Back to App</a>
+  </header>
+
+  <!-- 3D Map -->
+  <div id="map3d"></div>
+
+  <!-- Stats Panel -->
+  <div class="overlay stats-panel">
+    <div class="stats-title"><span class="live-dot"></span>Live Statistics</div>
+    <div class="stat-row">
+      <div>
+        <div class="stat-label">Active Incidents</div>
+        <div class="stat-change" id="incident-change">↑ 3 in last hour</div>
+      </div>
+      <div class="stat-value red" id="stat-incidents">12</div>
+    </div>
+    <div class="stat-row">
+      <div>
+        <div class="stat-label">Avg Response Time</div>
+        <div class="stat-change green">↓ 2min faster</div>
+      </div>
+      <div class="stat-value teal" id="stat-response">8.4<span style="font-size:11px">min</span></div>
+    </div>
+    <div class="stat-row">
+      <div>
+        <div class="stat-label">High Risk Zones</div>
+      </div>
+      <div class="stat-value amber" id="stat-zones">7</div>
+    </div>
+    <div class="stat-row">
+      <div>
+        <div class="stat-label">Hospitals Online</div>
+      </div>
+      <div class="stat-value green" id="stat-hospitals">24</div>
+    </div>
+  </div>
+
+  <!-- Layer Controls -->
+  <div class="overlay layer-panel">
+    <div class="layer-title">Map Layers</div>
+    <div class="layer-toggle" onclick="toggleLayer('heatmap')">
+      <div class="layer-name">
+        <div class="layer-dot" style="background:#E53935"></div>Risk Heatmap
+      </div>
+      <div class="toggle-switch on" id="toggle-heatmap"></div>
+    </div>
+    <div class="layer-toggle" onclick="toggleLayer('hospitals')">
+      <div class="layer-name">
+        <div class="layer-dot" style="background:#00BCD4"></div>Hospitals
+      </div>
+      <div class="toggle-switch on" id="toggle-hospitals"></div>
+    </div>
+    <div class="layer-toggle" onclick="toggleLayer('police')">
+      <div class="layer-name">
+        <div class="layer-dot" style="background:#1565C0"></div>Police Stations
+      </div>
+      <div class="toggle-switch on" id="toggle-police"></div>
+    </div>
+    <div class="layer-toggle" onclick="toggleLayer('incidents')">
+      <div class="layer-name">
+        <div class="layer-dot" style="background:#FF8F00"></div>Incidents
+      </div>
+      <div class="toggle-switch on" id="toggle-incidents"></div>
+    </div>
+    <div class="layer-toggle" onclick="toggleLayer('traffic')">
+      <div class="layer-name">
+        <div class="layer-dot" style="background:#43A047"></div>Traffic Flow
+      </div>
+      <div class="toggle-switch" id="toggle-traffic"></div>
+    </div>
+  </div>
+
+  <!-- Chart Panel -->
+  <div class="overlay chart-panel">
+    <div class="chart-header">
+      <div class="chart-title">📊 Incident Trends</div>
+      <div class="chart-tabs">
+        <button class="chart-tab active" onclick="setChartMode('24h',this)">24h</button>
+        <button class="chart-tab" onclick="setChartMode('7d',this)">7 days</button>
+        <button class="chart-tab" onclick="setChartMode('30d',this)">30 days</button>
+      </div>
+    </div>
+    <div class="chart-wrap"><canvas id="incident-chart"></canvas></div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-title">Risk Level</div>
+    <div class="legend-row">
+      <div class="legend-bar" style="background:#E53935"></div>
+      <div class="legend-label">High (>80%)</div>
+    </div>
+    <div class="legend-row">
+      <div class="legend-bar" style="background:#FF8F00"></div>
+      <div class="legend-label">Medium (40-80%)</div>
+    </div>
+    <div class="legend-row">
+      <div class="legend-bar" style="background:#FDD835"></div>
+      <div class="legend-label">Low (&lt;40%)</div>
+    </div>
+    <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
+      <div class="legend-title" style="margin-bottom:6px">Column Height</div>
+      <div style="font-size:11px;color:var(--muted)">= Accident frequency<br>Taller = More incidents</div>
+    </div>
+  </div>
+
+  <!-- View Controls -->
+  <div class="view-controls">
+    <button class="view-btn active" onclick="setCamera('top')">⊙ Top View</button>
+    <button class="view-btn" onclick="setCamera('tilt')">◈ Tilted 3D</button>
+    <button class="view-btn" onclick="setCamera('street')">👁 Street Level</button>
+    <button class="view-btn" onclick="flyAround()">🔄 Auto Rotate</button>
+  </div>
+
+  <!-- Tooltip -->
+  <div class="map-tooltip" id="tooltip" style="opacity:0"></div>
+
+  <script>
+    // ── State ──────────────────────────────────────────────────────────────────
+    let userLat = 17.385, userLon = 78.4867;
+    let deckInstance = null;
+    let mapInstance = null;
+    let autoRotate = false;
+    let rotateInterval = null;
+    const layerStates = { heatmap: true, hospitals: true, police: true, incidents: true, traffic: false };
+    let currentView = 'heatmap';
+
+    // ── Init map from URL params or geolocation ────────────────────────────────
+    const params = new URLSearchParams(location.search);
+    if (params.get('lat')) userLat = parseFloat(params.get('lat'));
+    if (params.get('lon')) userLon = parseFloat(params.get('lon'));
+
+    // ── Generate data ──────────────────────────────────────────────────────────
+    function seedRng(seed) {
+      let s = seed;
+      return () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646; };
+    }
+    const rng = seedRng(Math.round(userLat * 1000 + userLon * 1000));
+
+    function genHeatmapData(n = 80) {
+      const pts = [];
+      const clusters = [
+        [userLat + 0.00, userLon + 0.00, 1.0],
+        [userLat + 0.02, userLon + 0.03, 0.85],
+        [userLat - 0.03, userLon + 0.02, 0.75],
+        [userLat + 0.01, userLon - 0.04, 0.70],
+        [userLat - 0.02, userLon - 0.03, 0.65],
+        [userLat + 0.04, userLon + 0.01, 0.60],
+      ];
+      clusters.forEach(([clat, clon, base]) => {
+        for (let i = 0; i < Math.round(n / clusters.length); i++) {
+          const dlat = (rng() - 0.5) * 0.015;
+          const dlon = (rng() - 0.5) * 0.02;
+          const intensity = Math.min(1, base * (0.5 + rng() * 0.6));
+          pts.push({
+            position: [clon + dlon, clat + dlat],
+            weight: intensity,
+            intensity,
+            incidents: Math.round(intensity * 50),
+            label: `Zone ${pts.length + 1}`,
+          });
+        }
+      });
+      return pts;
+    }
+
+    function genHospitalData() {
+      return [
+        { position: [userLon + 0.01, userLat + 0.005], name: "City General Hospital", beds: 45, type: "hospital" },
+        { position: [userLon - 0.02, userLat + 0.02], name: "Medical College Hospital", beds: 120, type: "hospital" },
+        { position: [userLon + 0.03, userLat - 0.01], name: "ESI Hospital", beds: 60, type: "hospital" },
+        { position: [userLon - 0.01, userLat - 0.02], name: "District Hospital", beds: 80, type: "hospital" },
+        { position: [userLon + 0.02, userLon - 0.015], name: "Trauma Care Centre", beds: 30, type: "hospital" },
+      ];
+    }
+
+    function genPoliceData() {
+      return [
+        { position: [userLon + 0.005, userLat - 0.01], name: "Central Police Station" },
+        { position: [userLon - 0.03, userLat + 0.01], name: "North Police Station" },
+        { position: [userLon + 0.025, userLat + 0.02], name: "Highway Patrol Post" },
+        { position: [userLon - 0.015, userLat - 0.02], name: "Traffic Control Post" },
+      ];
+    }
+
+    function genIncidentData() {
+      const types = ["Accident", "Pothole", "Flooding", "Breakdown", "Animal"];
+      const pts = [];
+      for (let i = 0; i < 20; i++) {
+        pts.push({
+          position: [userLon + (rng() - 0.5) * 0.1, userLat + (rng() - 0.5) * 0.08],
+          type: types[Math.floor(rng() * types.length)],
+          severity: rng() > 0.7 ? "high" : rng() > 0.4 ? "medium" : "low",
+          time: `${Math.floor(rng() * 60)}min ago`,
+        });
+      }
+      return pts;
+    }
+
+    function genTrafficData() {
+      const lines = [];
+      const roads = [
+        [[userLon - 0.05, userLat + 0.01], [userLon + 0.05, userLat + 0.01]],
+        [[userLon, userLat - 0.04], [userLon, userLat + 0.05]],
+        [[userLon - 0.04, userLat - 0.02], [userLon + 0.03, userLat + 0.03]],
+      ];
+      roads.forEach(([start, end]) => {
+        const speed = rng();
+        lines.push({
+          sourcePosition: start,
+          targetPosition: end,
+          color: speed < 0.3 ? [229, 57, 53, 200] : speed < 0.7 ? [255, 143, 0, 180] : [67, 160, 71, 160],
+          width: 3 + rng() * 4,
+        });
+      });
+      return lines;
+    }
+
+    const heatData = genHeatmapData();
+    const hospitalData = genHospitalData();
+    const policeData = genPoliceData();
+    const incidentData = genIncidentData();
+    const trafficData = genTrafficData();
+
+    // ── Build deck.gl layers ───────────────────────────────────────────────────
+    function buildLayers() {
+      const layers = [];
+
+      if (layerStates.heatmap) {
+        if (currentView === 'heatmap' || currentView === 'buildings') {
+          // 3D extruded columns
+          layers.push(new deck.ColumnLayer({
+            id: 'risk-columns',
+            data: heatData,
+            diskResolution: 12,
+            radius: 120,
+            extruded: true,
+            pickable: true,
+            elevationScale: 1,
+            getPosition: d => d.position,
+            getFillColor: d => {
+              const i = d.intensity;
+              if (i > 0.7) return [229, 57, 53, 220];
+              if (i > 0.4) return [255, 143, 0, 200];
+              return [253, 216, 53, 180];
+            },
+            getElevation: d => d.intensity * 600,
+            onHover: showTooltip,
+          }));
+        } else {
+          // Flat heatmap for other views
+          layers.push(new deck.HeatmapLayer({
+            id: 'risk-heatmap',
+            data: heatData,
+            getPosition: d => d.position,
+            getWeight: d => d.weight,
+            radiusPixels: 60,
+            intensity: 1.5,
+            threshold: 0.05,
+            colorRange: [
+              [253, 216, 53, 180], [255, 143, 0, 200], [229, 57, 53, 220],
+              [183, 28, 28, 240], [74, 20, 140, 255],
+            ],
+          }));
+        }
+      }
+
+      if (layerStates.hospitals) {
+        layers.push(new deck.ScatterplotLayer({
+          id: 'hospitals',
+          data: hospitalData,
+          pickable: true,
+          getPosition: d => d.position,
+          getRadius: 80,
+          getFillColor: [0, 188, 212, 220],
+          getLineColor: [255, 255, 255, 180],
+          lineWidthMinPixels: 2,
+          stroked: true,
+          onHover: showTooltip,
+        }));
+        // Hospital labels as text
+        layers.push(new deck.TextLayer({
+          id: 'hospital-labels',
+          data: hospitalData,
+          getPosition: d => d.position,
+          getText: d => '🏥',
+          getSize: 20,
+          getAlignmentBaseline: 'center',
+        }));
+      }
+
+      if (layerStates.police) {
+        layers.push(new deck.ScatterplotLayer({
+          id: 'police',
+          data: policeData,
+          pickable: true,
+          getPosition: d => d.position,
+          getRadius: 60,
+          getFillColor: [21, 101, 192, 220],
+          getLineColor: [255, 255, 255, 150],
+          lineWidthMinPixels: 2,
+          stroked: true,
+          onHover: showTooltip,
+        }));
+      }
+
+      if (layerStates.incidents) {
+        layers.push(new deck.ScatterplotLayer({
+          id: 'incidents',
+          data: incidentData,
+          pickable: true,
+          getPosition: d => d.position,
+          getRadius: d => d.severity === 'high' ? 80 : d.severity === 'medium' ? 55 : 40,
+          getFillColor: d => d.severity === 'high' ? [229, 57, 53, 240] : d.severity === 'medium' ? [255, 143, 0, 220] : [253, 216, 53, 200],
+          getLineColor: [255, 255, 255, 100],
+          lineWidthMinPixels: 1,
+          stroked: true,
+          onHover: showTooltip,
+        }));
+      }
+
+      if (layerStates.traffic) {
+        layers.push(new deck.LineLayer({
+          id: 'traffic',
+          data: trafficData,
+          getSourcePosition: d => d.sourcePosition,
+          getTargetPosition: d => d.targetPosition,
+          getColor: d => d.color,
+          getWidth: d => d.width,
+          widthUnits: 'pixels',
+        }));
+      }
+
+      // User location
+      layers.push(new deck.ScatterplotLayer({
+        id: 'user-loc',
+        data: [{ position: [userLon, userLat] }],
+        getPosition: d => d.position,
+        getRadius: 50,
+        getFillColor: [21, 101, 192, 255],
+        getLineColor: [255, 255, 255, 255],
+        lineWidthMinPixels: 3,
+        stroked: true,
+      }));
+
+      return layers;
+    }
+
+    // ── Init deck.gl + MapLibre ────────────────────────────────────────────────
+    function initMap() {
+      const map = new maplibregl.Map({
+        container: 'map3d',
+        style: {
+          version: 8,
+          sources: {
+            osm: {
+              type: 'raster',
+              tiles: ['https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'],
+              tileSize: 256,
+              attribution: '© CartoDB © OSM',
+            }
+          },
+          layers: [{ id: 'background', type: 'raster', source: 'osm' }],
+        },
+        center: [userLon, userLat],
+        zoom: 12,
+        pitch: 45,
+        bearing: -15,
+        antialias: true,
+      });
+      mapInstance = map;
+
+      map.on('load', () => {
+        const overlay = new deck.MapboxOverlay({
+          interleaved: false,
+          layers: buildLayers(),
+        });
+        map.addControl(overlay);
+        deckInstance = overlay;
+      });
+    }
+
+    // ── Refresh layers ─────────────────────────────────────────────────────────
+    function refreshLayers() {
+      if (deckInstance) deckInstance.setProps({ layers: buildLayers() });
+    }
+
+    // ── Toggle layer ───────────────────────────────────────────────────────────
+    window.toggleLayer = function (name) {
+      layerStates[name] = !layerStates[name];
+      const toggle = document.getElementById('toggle-' + name);
+      if (toggle) toggle.classList.toggle('on', layerStates[name]);
+      refreshLayers();
+    };
+
+    // ── Set view mode ──────────────────────────────────────────────────────────
+    window.setView = function (mode) {
+      currentView = mode;
+      document.querySelectorAll('.nav-btn').forEach((b, i) => {
+        b.classList.toggle('active', ['heatmap', 'buildings', 'traffic', 'route'][i] === mode);
+      });
+      if (mode === 'traffic') { layerStates.traffic = true; document.getElementById('toggle-traffic').classList.add('on'); }
+      refreshLayers();
+      if (mode === 'route') flyRoute();
+    };
+
+    // ── Camera presets ─────────────────────────────────────────────────────────
+    window.setCamera = function (preset) {
+      document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+      if (!mapInstance) return;
+      const opts = {
+        top: { pitch: 0, bearing: 0, zoom: 12, duration: 1200 },
+        tilt: { pitch: 60, bearing: -20, zoom: 13, duration: 1200 },
+        street: { pitch: 85, bearing: 45, zoom: 15, duration: 1500 },
+      };
+      const o = opts[preset];
+      if (o) mapInstance.easeTo({ center: [userLon, userLat], ...o });
+      event.target.classList.add('active');
+    };
+
+    // ── Auto rotate ────────────────────────────────────────────────────────────
+    window.flyAround = function () {
+      autoRotate = !autoRotate;
+      if (autoRotate) {
+        if (mapInstance) mapInstance.easeTo({ pitch: 55, duration: 1000 });
+        rotateInterval = setInterval(() => {
+          if (mapInstance) mapInstance.setBearing((mapInstance.getBearing() + 0.5) % 360);
+        }, 50);
+      } else {
+        clearInterval(rotateInterval);
+      }
+    };
+
+    // ── Route fly-through ──────────────────────────────────────────────────────
+    function flyRoute() {
+      if (!mapInstance) return;
+      const waypoints = [
+        { center: [userLon - 0.04, userLat + 0.02], zoom: 14, pitch: 70, bearing: 30, duration: 2000 },
+        { center: [userLon, userLat], zoom: 15, pitch: 80, bearing: 90, duration: 2500 },
+        { center: [userLon + 0.03, userLat - 0.01], zoom: 14, pitch: 65, bearing: 150, duration: 2000 },
+        { center: [userLon, userLat], zoom: 12, pitch: 45, bearing: -15, duration: 2000 },
+      ];
+      let i = 0;
+      function next() {
+        if (i >= waypoints.length) return;
+        mapInstance.flyTo(waypoints[i]);
+        mapInstance.once('moveend', () => { i++; setTimeout(next, 500); });
+      }
+      next();
+    }
+
+    // ── Tooltip ────────────────────────────────────────────────────────────────
+    function showTooltip({ object, x, y }) {
+      const tip = document.getElementById('tooltip');
+      if (!object) { tip.style.opacity = 0; return; }
+
+      let html = '';
+      if (object.intensity !== undefined) {
+        html = `<div class="tooltip-title">⚠ ${object.label || 'Risk Zone'}</div>
+      <div class="tooltip-row"><span>Risk Level</span><span class="tooltip-val">${Math.round(object.intensity * 100)}%</span></div>
+      <div class="tooltip-row"><span>Incidents</span><span class="tooltip-val">${object.incidents}</span></div>`;
+      } else if (object.beds !== undefined) {
+        html = `<div class="tooltip-title">🏥 ${object.name}</div>
+      <div class="tooltip-row"><span>Available Beds</span><span class="tooltip-val">${object.beds}</span></div>`;
+      } else if (object.type !== undefined && object.severity !== undefined) {
+        html = `<div class="tooltip-title">${object.type === 'high' ? '🔴' : '🟡'} Incident</div>
+      <div class="tooltip-row"><span>Type</span><span class="tooltip-val">${object.type}</span></div>
+      <div class="tooltip-row"><span>Severity</span><span class="tooltip-val">${object.severity}</span></div>
+      <div class="tooltip-row"><span>Time</span><span class="tooltip-val">${object.time}</span></div>`;
+      } else if (object.name) {
+        html = `<div class="tooltip-title">🚔 ${object.name}</div>`;
+      }
+
+      tip.innerHTML = html;
+      tip.style.opacity = 1;
+      tip.style.left = (x + 12) + 'px';
+      tip.style.top = (y + 12) + 'px';
+    }
+
+    // ── Chart ──────────────────────────────────────────────────────────────────
+    let chart = null;
+    function buildChartData(mode) {
+      const labels24h = ['00', '02', '04', '06', '08', '10', '12', '14', '16', '18', '20', '22'];
+      const labels7d = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const labels30d = Array.from({ length: 30 }, (_, i) => `${i + 1}`);
+      const seed2 = seedRng(42);
+      const randArr = (n, max) => Array.from({ length: n }, () => Math.round(seed2() * max));
+      return {
+        '24h': { labels: labels24h, data: randArr(12, 25), data2: randArr(12, 15) },
+        '7d': { labels: labels7d, data: randArr(7, 80), data2: randArr(7, 50) },
+        '30d': { labels: labels30d, data: randArr(30, 100), data2: randArr(30, 60) },
+      }[mode];
+    }
+
+    window.setChartMode = function (mode, btn) {
+      document.querySelectorAll('.chart-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const d = buildChartData(mode);
+      chart.data.labels = d.labels;
+      chart.data.datasets[0].data = d.data;
+      chart.data.datasets[1].data = d.data2;
+      chart.update('active');
+    };
+
+    function initChart() {
+      const d = buildChartData('24h');
+      const ctx = document.getElementById('incident-chart').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: d.labels,
+          datasets: [
+            { label: 'Accidents', data: d.data, borderColor: '#E53935', backgroundColor: 'rgba(229,57,53,0.15)', fill: true, tension: 0.4, pointRadius: 0 },
+            { label: 'Reports', data: d.data2, borderColor: '#00BCD4', backgroundColor: 'rgba(0,188,212,0.1)', fill: true, tension: 0.4, pointRadius: 0 },
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, layout: { padding: { left: 8, right: 8 } },
+          plugins: { legend: { labels: { color: '#8899AA', font: { size: 11 } } }, tooltip: { mode: 'index', intersect: false } },
+          scales: {
+            x: { ticks: { color: '#8899AA', font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { ticks: { color: '#8899AA', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          },
+          animation: { duration: 400 },
+        },
+      });
+    }
+
+    // ── Animate live stats ─────────────────────────────────────────────────────
+    function animateStats() {
+      setInterval(() => {
+        const el = document.getElementById('stat-incidents');
+        if (el) {
+          const v = 10 + Math.floor(Math.random() * 6);
+          el.textContent = v;
+        }
+        const rt = document.getElementById('stat-response');
+        if (rt) rt.innerHTML = (7 + Math.random() * 3).toFixed(1) + '<span style="font-size:11px">min</span>';
+      }, 4000);
+    }
+
+    // ── Boot ───────────────────────────────────────────────────────────────────
+    window.addEventListener('load', () => {
+      // Try get real GPS
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          userLat = pos.coords.latitude;
+          userLon = pos.coords.longitude;
+          initMap();
+        }, () => initMap());
+      } else { initMap(); }
+      initChart();
+      animateStats();
+    });
+  </script>
+</body>
+
+</html>

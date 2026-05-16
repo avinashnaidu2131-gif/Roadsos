@@ -1,0 +1,45 @@
+{
+  "name": "RoadSoS — AI Road Emergency Assistant",
+  "short_name": "RoadSoS",
+  "description": "AI-powered road emergency assistant. Find hospitals, get first aid, share SOS — works offline.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#0D1B2A",
+  "theme_color": "#E53935",
+  "lang": "en",
+  "categories": ["health", "navigation", "utilities"],
+  "icons": [
+    {"src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable"},
+    {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ],
+  "shortcuts": [
+    {
+      "name": "SOS Emergency",
+      "short_name": "SOS",
+      "url": "/?action=sos",
+      "icons": [{"src": "/static/icon-192.png", "sizes": "192x192"}]
+    },
+    {
+      "name": "Find Hospital",
+      "short_name": "Hospital",
+      "url": "/?type=hospital",
+      "icons": [{"src": "/static/icon-192.png", "sizes": "192x192"}]
+    },
+    {
+      "name": "First Aid Guide",
+      "short_name": "First Aid",
+      "url": "/?panel=firstaid",
+      "icons": [{"src": "/static/icon-192.png", "sizes": "192x192"}]
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "GET",
+    "params": {"title": "title", "text": "text", "url": "url"}
+  }
+}

@@ -1,0 +1,102 @@
+name: Build RoadSoS APK
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.9'
+
+      # ── Debug APK (every push to main) ──────────────────────────────────
+      - name: Build debug APK
+        working-directory: android
+        run: gradle assembleDebug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: roadsos-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      # ── Copy APK into static/downloads so the web server can serve it ──
+      - name: Copy APK to static/downloads
+        run: |
+          mkdir -p static/downloads
+          cp android/app/build/outputs/apk/debug/app-debug.apk static/downloads/app-debug.apk
+
+      - name: Commit APK to repo
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add static/downloads/app-debug.apk
+          git diff --staged --quiet || git commit -m "ci: update APK build [skip ci]"
+          git push
+
+      # ── Release AAB (only on version tags like v1.0.0) ──────────────────
+      - name: Decode keystore
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d \
+            > android/roadsos-release.jks
+
+      - name: Build release AAB
+        if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: android
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/android/roadsos-release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: gradle bundleRelease
+
+      - name: Upload release AAB
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: roadsos-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 90
+
+      # ── GitHub Release (auto-created on version tag) ─────────────────────
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/bundle/release/app-release.aab
+          name: RoadSoS ${{ github.ref_name }}
+          body: |
+            ## RoadSoS ${{ github.ref_name }}
+
+            ### Install on Android
+            1. Download `app-debug.apk` below
+            2. On your phone: Settings → Apps → Special access → Install unknown apps → allow your browser
+            3. Open the downloaded APK and tap Install
+
+            ### For Play Store submission
+            Use the `app-release.aab` bundle file.
+
+            ### Changes
+            See [commit history](../../commits/${{ github.ref_name }}) for full details.
