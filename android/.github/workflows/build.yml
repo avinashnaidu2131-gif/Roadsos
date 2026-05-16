@@ -25,7 +25,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # ── Android SDK — write local.properties (cleanest fix) ─────────────
+      # ── Android SDK — write local.properties only (don't touch gradle.properties) ──
       - name: Set up Android SDK
         working-directory: android
         run: |
