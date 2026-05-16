@@ -70,13 +70,10 @@ jobs:
       - name: Build debug APK
         working-directory: android
         env:
-          # Override runner-injected JVM options that cause "-Xmx64m -Xms64m" class error
-          JAVA_TOOL_OPTIONS: "-Xmx1536m"
-          _JAVA_OPTIONS: "-Xmx1536m"
-          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx1536m"
+          # JVM_OPTS replaces DEFAULT_JVM_OPTS in gradlew (no quotes issue)
+          JVM_OPTS: -Xmx1536m
+          GRADLE_OPTS: -Dorg.gradle.daemon=false
         run: |
-          printf 'org.gradle.jvmargs=-Xmx1536m\nandroid.useAndroidX=true\nandroid.enableJetifier=true\norg.gradle.daemon=false\n' > gradle.properties
-          cat gradle.properties
           ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload debug APK
