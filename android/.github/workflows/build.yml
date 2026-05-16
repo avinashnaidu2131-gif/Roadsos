@@ -25,11 +25,11 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # ── Android SDK (runner has it pre-installed, just point ANDROID_HOME) ──
+      # ── Android SDK — write local.properties (cleanest fix) ─────────────
       - name: Set up Android SDK
+        working-directory: android
         run: |
-          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-          echo "ANDROID_SDK_ROOT=" >> $GITHUB_ENV
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
 
       # ── Gradle cache ─────────────────────────────────────────────────────
       - name: Cache Gradle
