@@ -6,97 +6,131 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
+# Force all JS actions to use Node 24 (Node 20 deprecated June 2026)
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      # ── Checkout ────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
+      # ── Java 17 ─────────────────────────────────────────────────────────
+      # NOTE: do NOT set cache:'gradle' here — we handle caching ourselves
+      # below to avoid conflicts with gradle/actions/setup-gradle warnings.
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
+      # ── Android SDK ─────────────────────────────────────────────────────
+      # android-actions/setup-android@v3 is Node 24 compatible when
+      # FORCE_JAVASCRIPT_ACTIONS_TO_NODE24 is set (done in env above).
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v3
+      # ── Gradle cache ─────────────────────────────────────────────────────
+      # Using actions/cache@v4 directly avoids the setup-gradle deprecation
+      # warning. Cache failures are non-fatal (continue-on-error: true).
+      - name: Cache Gradle home
+        id: gradle-cache
+        continue-on-error: true
+        uses: actions/cache@v4
         with:
-          gradle-version: '8.9'
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
 
-      # ── Debug APK (every push to main) ──────────────────────────────────
+      # ── Permissions ───────────────────────────────────────────────────────
+      - name: Make gradlew executable
+        working-directory: android
+        run: chmod +x gradlew
+
+      # ── Debug APK (every push to main) ───────────────────────────────────
       - name: Build debug APK
         working-directory: android
-        run: gradle assembleDebug
+        run: |
+          ./gradlew assembleDebug \
+            --no-daemon \
+            --stacktrace \
+            --build-cache \
+            -Dorg.gradle.jvmargs="-Xmx2g -XX:+HeapDumpOnOutOfMemoryError"
 
-      - name: Upload debug APK
+      - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: roadsos-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
-      # ── Copy APK into static/downloads so the web server can serve it ──
+      # ── Copy APK so web server can serve it ─────────────────────────────
       - name: Copy APK to static/downloads
         run: |
           mkdir -p static/downloads
-          cp android/app/build/outputs/apk/debug/app-debug.apk static/downloads/app-debug.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk \
+             static/downloads/roadsos-debug.apk
 
       - name: Commit APK to repo
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add static/downloads/app-debug.apk
-          git diff --staged --quiet || git commit -m "ci: update APK build [skip ci]"
-          git push
+          git add static/downloads/roadsos-debug.apk
+          git diff --staged --quiet || \
+            git commit -m "ci: update debug APK [skip ci]" && git push
 
-      # ── Release AAB (only on version tags like v1.0.0) ──────────────────
+      # ── Release APK (only on version tags like v1.0.0) ──────────────────
       - name: Decode keystore
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d \
             > android/roadsos-release.jks
 
-      - name: Build release AAB
+      - name: Build release APK
         if: startsWith(github.ref, 'refs/tags/v')
         working-directory: android
         env:
-          KEYSTORE_PATH: ${{ github.workspace }}/android/roadsos-release.jks
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: gradle bundleRelease
+          KEYSTORE_PATH:      ${{ github.workspace }}/android/roadsos-release.jks
+          KEYSTORE_PASSWORD:  ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS:          ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD:       ${{ secrets.KEY_PASSWORD }}
+        run: |
+          ./gradlew assembleRelease \
+            --no-daemon \
+            --stacktrace \
+            -Dorg.gradle.jvmargs="-Xmx2g"
 
-      - name: Upload release AAB
+      - name: Upload release APK artifact
         if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
-          name: roadsos-release-aab
-          path: android/app/build/outputs/bundle/release/app-release.aab
+          name: roadsos-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
           retention-days: 90
 
-      # ── GitHub Release (auto-created on version tag) ─────────────────────
+      # ── GitHub Release ───────────────────────────────────────────────────
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: |
             android/app/build/outputs/apk/debug/app-debug.apk
-            android/app/build/outputs/bundle/release/app-release.aab
+            android/app/build/outputs/apk/release/app-release.apk
           name: RoadSoS ${{ github.ref_name }}
           body: |
             ## RoadSoS ${{ github.ref_name }}
 
-            ### Install on Android
-            1. Download `app-debug.apk` below
-            2. On your phone: Settings → Apps → Special access → Install unknown apps → allow your browser
-            3. Open the downloaded APK and tap Install
+            ### Install on Android (sideload APK)
+            1. Download `app-release.apk` (or `app-debug.apk` for testing)
+            2. On your phone: **Settings → Apps → Special access → Install unknown apps**
+               → allow your browser/Files app
+            3. Open the downloaded APK and tap **Install**
 
-            ### For Play Store submission
-            Use the `app-release.aab` bundle file.
-
-            ### Changes
-            See [commit history](../../commits/${{ github.ref_name }}) for full details.
+            > **Note:** This is a direct APK build, not a Play Store submission.

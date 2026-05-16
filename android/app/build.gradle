@@ -27,6 +27,16 @@ android {
         ]
     }
 
+    signingConfigs {
+        release {
+            // Set via environment variables — NEVER hardcode passwords in source
+            storeFile     file(System.getenv("KEYSTORE_PATH") ?: "roadsos-release.jks")
+            storePassword System.getenv("KEYSTORE_PASSWORD") ?: ""
+            keyAlias      System.getenv("KEY_ALIAS") ?: "roadsos"
+            keyPassword   System.getenv("KEY_PASSWORD") ?: ""
+        }
+    }
+
     buildTypes {
         debug {
             // Use Android emulator localhost for local dev
@@ -41,16 +51,6 @@ android {
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
-        }
-    }
-
-    signingConfigs {
-        release {
-            // Set via environment variables — NEVER hardcode passwords in source
-            storeFile     file(System.getenv("KEYSTORE_PATH") ?: "roadsos-release.jks")
-            storePassword System.getenv("KEYSTORE_PASSWORD") ?: ""
-            keyAlias      System.getenv("KEY_ALIAS") ?: "roadsos"
-            keyPassword   System.getenv("KEY_PASSWORD") ?: ""
         }
     }
 
