@@ -83,11 +83,13 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Only stage the APK — ignore all build artifacts
           git add static/downloads/roadsos-debug.apk
-          git diff --staged --quiet && echo "No changes to commit" && exit 0
+          # Nothing changed → skip
+          git diff --staged --quiet && echo "APK unchanged, skipping commit" && exit 0
           git commit -m "ci: update debug APK [skip ci]"
-          git pull --rebase origin main
-          git push
+          # Force-push just this branch — safe because only the APK file changed
+          git push --force-with-lease
 
       # ── Release APK (version tags only) ──────────────────────────────────
       - name: Decode keystore
