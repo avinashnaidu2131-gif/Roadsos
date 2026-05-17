@@ -70,26 +70,24 @@ jobs:
         with:
           name: roadsos-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 30
+          retention-days: 90
 
-      # ── Copy APK to static/downloads ─────────────────────────────────────
-      - name: Copy APK to static/downloads
-        run: |
-          mkdir -p static/downloads
-          cp android/app/build/outputs/apk/debug/app-debug.apk \
-             static/downloads/roadsos-debug.apk
+      # ── Always create/update the latest release with the fresh APK ────────
+      - name: Create or update Latest Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "RoadSoS — Latest Build"
+          prerelease: true
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+          body: |
+            ## Install RoadSoS on Android
 
-      - name: Commit APK to repo
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          # Only stage the APK — ignore all build artifacts
-          git add static/downloads/roadsos-debug.apk
-          # Nothing changed → skip
-          git diff --staged --quiet && echo "APK unchanged, skipping commit" && exit 0
-          git commit -m "ci: update debug APK [skip ci]"
-          # Force-push just this branch — safe because only the APK file changed
-          git push --force-with-lease
+            1. Tap **app-debug.apk** below to download
+            2. Open the file on your phone → tap **Install**
+            3. If Play Protect warns you, tap **Install anyway**
+
+            > Built automatically from the latest commit.
 
       # ── Release APK (version tags only) ──────────────────────────────────
       - name: Decode keystore

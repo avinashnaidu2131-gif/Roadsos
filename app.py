@@ -391,19 +391,13 @@ def download_page():
 
 @app.route('/download/apk')
 def download_apk():
-    import os
-    from flask import send_from_directory, abort
-    apk_dir  = os.path.join(app.root_path, 'static', 'downloads')
-    apk_file = 'app-debug.apk'
-    apk_path = os.path.join(apk_dir, apk_file)
-    if not os.path.exists(apk_path):
-        abort(404, description="APK not yet available. Check back after the GitHub Actions build completes.")
-    return send_from_directory(
-        apk_dir, apk_file,
-        as_attachment=True,
-        download_name='RoadSoS.apk',
-        mimetype='application/vnd.android.package-archive'
+    from flask import redirect
+    # Points to the "latest" pre-release tag created by CI on every build
+    GITHUB_APK_URL = (
+        "https://github.com/avinashnaidu2131-gif/Roadsos"
+        "/releases/download/latest/app-debug.apk"
     )
+    return redirect(GITHUB_APK_URL, code=302)
 
 # ── Web Share Target — PWA "Share" from other apps ────────────────────────
 # manifest.json share_target.action = "/share"
